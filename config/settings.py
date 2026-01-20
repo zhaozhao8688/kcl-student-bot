@@ -25,14 +25,6 @@ class Settings(BaseSettings):
     # Firecrawl Configuration
     firecrawl_api_key: str
 
-    # Microsoft SSO Configuration
-    microsoft_client_id: str
-    microsoft_client_secret: str
-    microsoft_tenant_id: str = "common"
-    microsoft_redirect_uri: str = "http://localhost:8501"
-    microsoft_authority: Optional[str] = None
-    microsoft_scopes: list[str] = ["User.Read", "Calendars.Read"]
-
     # Application Configuration
     app_env: str = "development"
     log_level: str = "INFO"
@@ -43,12 +35,6 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore"
     )
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Construct Microsoft authority URL if not provided
-        if not self.microsoft_authority:
-            self.microsoft_authority = f"https://login.microsoftonline.com/{self.microsoft_tenant_id}"
 
 
 # Singleton instance

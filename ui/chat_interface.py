@@ -13,13 +13,12 @@ from utils.logger import setup_logger
 logger = setup_logger(__name__)
 
 
-def process_user_input(user_input: str, ical_url: Optional[str] = None) -> str:
+def process_user_input(user_input: str) -> str:
     """
     Process user input through the agent graph.
 
     Args:
         user_input: User's query
-        ical_url: Optional iCal URL for timetable access
 
     Returns:
         Agent's response
@@ -27,11 +26,14 @@ def process_user_input(user_input: str, ical_url: Optional[str] = None) -> str:
     try:
         logger.info(f"Processing query: {user_input}")
 
+        # Get iCal URL from session
+        ical_url = SessionManager.get_ical_url()
+
         # Prepare initial state
         initial_state: AgentState = {
             "messages": [],
             "user_id": SessionManager.get_user_id(),
-            "is_authenticated": SessionManager.is_authenticated(),
+            "is_authenticated": False,  # Not using authentication anymore
             "query": user_input,
             "query_type": "",
             "needs_search": False,
@@ -41,7 +43,7 @@ def process_user_input(user_input: str, ical_url: Optional[str] = None) -> str:
             "scraped_content": None,
             "timetable_events": None,
             "final_response": None,
-            "ical_url": ical_url
+            "ical_url": ical_url if ical_url else None
         }
 
         # Run through graph
@@ -111,14 +113,7 @@ def render_chat_interface() -> None:
 
         # Process input
         with st.spinner("Thinking..."):
-            # Get iCal URL if authenticated
-            ical_url = None
-            if SessionManager.is_authenticated():
-                # In a real app, this would be stored in user preferences
-                # For now, we'll prompt for it in settings
-                ical_url = st.session_state.get("ical_url")
-
-            response = process_user_input(user_input, ical_url)
+            response = process_user_input(user_input)
 
         # Add assistant message to history and display
         SessionManager.add_message("assistant", response)
@@ -131,20 +126,4 @@ def render_chat_interface() -> None:
         st.rerun()
 
 
-def render_settings_panel() -> None:
-    """Render settings panel for authenticated users."""
-    if SessionManager.is_authenticated():
-        with st.sidebar:
-            st.divider()
-            st.subheader("⚙️ Settings")
-
-            # iCal URL input
-            ical_url = st.text_input(
-                "Timetable iCal URL (optional)",
-                value=st.session_state.get("ical_url", ""),
-                help="Paste your KCL timetable iCal subscription URL to enable timetable queries"
-            )
-
-            if ical_url:
-                st.session_state.ical_url = ical_url
-                st.success("✅ Timetable URL saved!")
+# Settings panel removed - now integrated into main sidebar

@@ -84,5 +84,5 @@ class TimetableTool(BaseTool):
             return []
 
     def requires_auth(self) -> bool:
-        """Timetable tool requires authentication."""
-        return True
+        """Timetable tool does not require authentication - only needs iCal URL."""
+        return False

@@ -5,10 +5,10 @@ An AI-powered chat assistant for King's College London students that provides in
 ## Features
 
 - 🔍 **Web Search**: Search for KCL-related information across the web
-- 📅 **Timetable Access**: View your personal timetable (requires Microsoft SSO login)
+- 📅 **Timetable Access**: View your personal timetable via iCal subscription
 - 🤖 **AI-Powered Responses**: Get intelligent, context-aware answers
-- 🔐 **Secure Authentication**: Microsoft SSO integration for private content
 - 💾 **Chat History**: Persistent chat history stored in Supabase
+- 🔓 **No Login Required**: Simply paste your timetable URL to access schedule
 
 ## Architecture
 
@@ -16,8 +16,7 @@ An AI-powered chat assistant for King's College London students that provides in
 Frontend: Streamlit (Python web app)
 Agent System: LangGraph (workflow orchestration)
 LLM Provider: OpenRouter (Claude 3.5 Sonnet)
-Database/Auth: Supabase
-Authentication: Microsoft Entra ID SSO
+Database: Supabase
 Tools: SerpAPI (search), Firecrawl (scraping), iCal (timetable)
 ```
 
@@ -29,7 +28,6 @@ kcl-student-bot/
 ├── config/
 │   └── settings.py          # Centralized configuration
 ├── auth/
-│   ├── microsoft_sso.py     # Microsoft SSO integration
 │   └── session_manager.py   # Session state management
 ├── agents/
 │   ├── graph.py            # LangGraph workflow
@@ -46,7 +44,6 @@ kcl-student-bot/
 │   └── supabase_service.py # Supabase client
 └── ui/
     ├── components.py        # Reusable UI components
-    ├── auth_button.py       # Login/logout button
     └── chat_interface.py    # Chat UI logic
 ```
 
@@ -91,9 +88,8 @@ Edit `.env` with your credentials:
 - Supabase URL and key
 - SerpAPI key
 - Firecrawl API key
-- Microsoft SSO credentials (client ID, secret, tenant ID)
 
-5. **Set up Supabase Database**
+5. **Set up Supabase Database** (Optional - for chat history persistence)
 
 Create the following tables in your Supabase project:
 
@@ -141,31 +137,40 @@ The app will open in your browser at `http://localhost:8501`
 
 ## Usage Guide
 
-### Basic Usage (No Login Required)
+### Basic Usage
 
 1. Type your question in the chat input
 2. Ask anything about KCL (e.g., "What programs does KCL offer?")
 3. Get AI-powered responses with relevant information
 
-### Authenticated Features (Login Required)
-
-1. Click "🔐 Login with Microsoft" button
-2. Follow the authentication flow
-3. Paste the redirect URL back into the app
-4. Access timetable and personal features
-
 ### Timetable Access
 
-1. Login with your KCL Microsoft account
-2. Go to Settings in the sidebar
-3. Paste your KCL timetable iCal subscription URL
-4. Ask questions like "What's my schedule today?"
+1. Go to your KCL timetable (Scientia/MyTimetable)
+2. Click the **"Subscribe"** button
+3. Copy the URL from **"Manual subscription"** section
+4. Paste it in the sidebar under "📅 Timetable Setup"
+5. Click "💾 Save Timetable URL"
+6. Ask questions like "What's my schedule today?"
+
+**Example iCal URL format:**
+```
+https://scientia-eu-v4-api-d4-02.azurewebsites.net/api/ical/ca05f91a-6c36-45db-9b40-6d011398ed58/...
+```
 
 ## Configuration
 
 ### Environment Variables
 
-See `.env.example` for all required configuration variables.
+Required:
+- `OPENROUTER_API_KEY` - Your OpenRouter API key
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_KEY` - Your Supabase API key
+- `SERPAPI_API_KEY` - Your SerpAPI key
+- `FIRECRAWL_API_KEY` - Your Firecrawl API key
+
+Optional:
+- `APP_ENV` - Environment (development/production)
+- `LOG_LEVEL` - Logging level (INFO/DEBUG/ERROR)
 
 ### Streamlit Theme
 
@@ -186,9 +191,9 @@ Edit the graph flow in `agents/graph.py` to add or modify agent nodes.
 ## Security
 
 - All API keys stored in `.env` (never committed to git)
-- Microsoft SSO for enterprise-grade authentication
 - Supabase Row Level Security for data protection
 - Input validation on all user inputs
+- No authentication required - privacy-focused design
 
 ## Troubleshooting
 
@@ -196,11 +201,37 @@ Edit the graph flow in `agents/graph.py` to add or modify agent nodes.
 
 **Import errors**: Make sure virtual environment is activated and dependencies are installed
 
-**Authentication fails**: Check Microsoft SSO credentials in `.env`
-
-**Database errors**: Verify Supabase URL and key, ensure tables are created
+**Database errors**: Verify Supabase URL and key, ensure tables are created (optional)
 
 **API errors**: Check that all API keys are valid and have sufficient credits
+
+**Timetable not working**: Verify your iCal URL is correct and accessible
+
+**Search not working**: Verify SerpAPI key is valid and has credits
+
+**Scraping fails**: Some websites may block scraping, this is expected
+
+## Example Queries
+
+**General Information:**
+- "What is King's College London known for?"
+- "Tell me about KCL's computer science program"
+- "Where is the main KCL campus?"
+- "What libraries does KCL have?"
+
+**Timetable Queries (requires iCal URL):**
+- "Show me my timetable"
+- "What classes do I have today?"
+- "When is my next lecture?"
+- "Do I have any classes on Friday?"
+
+## Performance Expectations
+
+- **Response Time**: 5-15 seconds per query
+  - Search: ~2-3 seconds
+  - Scraping: ~3-5 seconds
+  - LLM: ~5-10 seconds
+- **First Load**: May take longer as services initialize
 
 ## License
 
@@ -208,7 +239,7 @@ This project is for educational purposes.
 
 ## Support
 
-For issues or questions, please check the logs in the terminal where Streamlit is running.
+For issues or questions, check the logs in the terminal where Streamlit is running.
 
 ## Acknowledgments
 
@@ -216,4 +247,5 @@ For issues or questions, please check the logs in the terminal where Streamlit i
 - Anthropic for Claude
 - LangGraph for agent orchestration
 - Streamlit for the web framework
-- Supabase for database and auth
+- Supabase for database
+- Scientia for KCL timetabling

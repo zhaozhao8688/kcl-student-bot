@@ -2,12 +2,15 @@
 Agent state definition for LangGraph.
 """
 
-from typing import TypedDict, List, Dict, Any, Optional
-from langgraph.graph import MessagesState
+from typing import TypedDict, List, Dict, Any, Optional, Annotated
+from langgraph.graph.message import add_messages
 
 
-class AgentState(MessagesState):
+class AgentState(TypedDict):
     """State object that flows through the agent graph."""
+
+    # Messages (required for LangGraph)
+    messages: Annotated[list, add_messages]
 
     # User context
     user_id: str

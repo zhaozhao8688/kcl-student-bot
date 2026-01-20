@@ -40,20 +40,50 @@ def render_sidebar() -> None:
 
         **Features:**
         - 🔍 Search KCL information
-        - 📅 Access your timetable (login required)
+        - 📅 Access your timetable
         - 💡 Get personalized help
 
         ### How to Use
         1. Type your question in the chat
-        2. For timetable access, login with KCL account
+        2. For timetable access, paste your iCal URL below
         3. Ask anything about KCL!
         """)
 
         st.divider()
 
+        # Timetable iCal URL input
+        st.subheader("📅 Timetable Setup")
+        st.markdown("Paste your Scientia timetable iCal URL:")
+
+        from auth.session_manager import SessionManager
+
+        current_url = SessionManager.get_ical_url()
+        ical_url = st.text_area(
+            "iCal Subscription URL",
+            value=current_url,
+            height=100,
+            placeholder="https://scientia-eu-v4-api-d4-02.azurewebsites.net/api/ical/...",
+            help="Get this from your KCL timetable → Subscribe → Manual subscription"
+        )
+
+        if st.button("💾 Save Timetable URL", use_container_width=True, type="primary"):
+            if ical_url and ical_url.strip():
+                SessionManager.set_ical_url(ical_url.strip())
+                st.success("✅ Timetable URL saved!")
+                st.rerun()
+            else:
+                st.warning("Please enter a valid URL")
+
+        if SessionManager.has_ical_url():
+            st.success("✅ Timetable connected")
+            if st.button("🗑️ Remove Timetable", use_container_width=True):
+                SessionManager.set_ical_url("")
+                st.rerun()
+
+        st.divider()
+
         # Clear chat button
         if st.button("🗑️ Clear Chat", use_container_width=True):
-            from auth.session_manager import SessionManager
             SessionManager.clear_chat_history()
             st.rerun()
 

@@ -104,7 +104,7 @@ def scraper_node(state: AgentState) -> Dict[str, Any]:
 
 def timetable_node(state: AgentState) -> Dict[str, Any]:
     """
-    Access timetable if authenticated and needed.
+    Access timetable if iCal URL is provided and needed.
 
     Args:
         state: Current agent state
@@ -116,19 +116,12 @@ def timetable_node(state: AgentState) -> Dict[str, Any]:
         logger.info("Skipping timetable - not needed")
         return {"timetable_events": None}
 
-    if not state.get("is_authenticated", False):
-        logger.info("Cannot access timetable - user not authenticated")
-        return {
-            "timetable_events": None,
-            "final_response": "To access your timetable, please log in with your KCL Microsoft account using the button in the top right corner."
-        }
-
     ical_url = state.get("ical_url")
     if not ical_url:
         logger.info("No iCal URL provided")
         return {
             "timetable_events": None,
-            "final_response": "Please provide your KCL timetable iCal subscription URL to access your schedule."
+            "final_response": "To access your timetable, please add your iCal subscription URL in the sidebar.\n\n**How to get your iCal URL:**\n1. Go to your KCL timetable (Scientia)\n2. Click 'Subscribe' button\n3. Copy the URL from 'Manual subscription' section\n4. Paste it in the sidebar"
         }
 
     logger.info("Fetching timetable")

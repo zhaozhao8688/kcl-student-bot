@@ -19,56 +19,39 @@ class SessionManager:
         if "initialized" not in st.session_state:
             st.session_state.initialized = True
             st.session_state.session_id = str(uuid.uuid4())
-            st.session_state.authenticated = False
-            st.session_state.user_info = None
-            st.session_state.access_token = None
             st.session_state.chat_history = []
+            st.session_state.ical_url = ""
             logger.info(f"Initialized new session: {st.session_state.session_id}")
 
     @staticmethod
-    def login(user_info: Dict[str, Any], access_token: str) -> None:
+    def set_ical_url(url: str) -> None:
         """
-        Mark user as authenticated and store user info.
+        Set the iCal URL for timetable access.
 
         Args:
-            user_info: User information from Microsoft
-            access_token: Access token for API calls
+            url: iCal subscription URL
         """
-        st.session_state.authenticated = True
-        st.session_state.user_info = user_info
-        st.session_state.access_token = access_token
-        logger.info(f"User logged in: {user_info.get('userPrincipalName', 'unknown')}")
+        st.session_state.ical_url = url
+        logger.info("iCal URL updated")
 
     @staticmethod
-    def logout() -> None:
-        """Clear authentication and reset session."""
-        st.session_state.authenticated = False
-        st.session_state.user_info = None
-        st.session_state.access_token = None
-        st.session_state.chat_history = []
-        logger.info("User logged out")
-
-    @staticmethod
-    def is_authenticated() -> bool:
+    def get_ical_url() -> str:
         """
-        Check if user is authenticated.
+        Get the stored iCal URL.
 
         Returns:
-            True if authenticated, False otherwise
+            iCal URL or empty string
         """
-        return st.session_state.get("authenticated", False)
+        return st.session_state.get("ical_url", "")
 
     @staticmethod
     def get_user_id() -> str:
         """
-        Get user identifier.
+        Get user identifier (session-based).
 
         Returns:
-            User ID (email) if authenticated, session ID otherwise
+            Session ID
         """
-        if SessionManager.is_authenticated():
-            user_info = st.session_state.get("user_info", {})
-            return user_info.get("userPrincipalName", st.session_state.session_id)
         return st.session_state.get("session_id", "anonymous")
 
     @staticmethod
@@ -116,14 +99,15 @@ class SessionManager:
         logger.info("Chat history cleared")
 
     @staticmethod
-    def get_access_token() -> Optional[str]:
+    def has_ical_url() -> bool:
         """
-        Get access token if authenticated.
+        Check if iCal URL is configured.
 
         Returns:
-            Access token or None
+            True if URL is set, False otherwise
         """
-        return st.session_state.get("access_token")
+        url = st.session_state.get("ical_url", "")
+        return bool(url and url.strip())
 
 
 # Initialize on import

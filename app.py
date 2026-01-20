@@ -4,9 +4,8 @@ KCL Student Bot - Main Streamlit Application
 
 import streamlit as st
 from auth.session_manager import SessionManager
-from ui.components import render_header, render_sidebar
-from ui.auth_button import render_auth_button
-from ui.chat_interface import render_chat_interface, render_settings_panel
+from ui.components import render_sidebar
+from ui.chat_interface import render_chat_interface
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -61,22 +60,12 @@ def main():
     SessionManager.initialize()
 
     # Render header
-    col1, col2 = st.columns([3, 1])
-
-    with col1:
-        st.title("🎓 KCL Student Bot")
-        st.caption("Your AI Assistant for King's College London")
-
-    with col2:
-        render_auth_button()
-
+    st.title("🎓 KCL Student Bot")
+    st.caption("Your AI Assistant for King's College London")
     st.divider()
 
     # Render sidebar
     render_sidebar()
-
-    # Render settings panel if authenticated
-    render_settings_panel()
 
     # Render main chat interface
     render_chat_interface()
