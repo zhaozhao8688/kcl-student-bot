@@ -1,0 +1,41 @@
+🔧 QUICK FIX - DO THIS NOW IN RAILWAY DASHBOARD
+
+═══════════════════════════════════════════════════════
+
+THE PROBLEM:
+- Build works ✅
+- Deploy works ✅
+- Healthcheck FAILS ❌ (can't connect to app on correct port)
+
+THE FIX: Set the start command in Railway
+
+═══════════════════════════════════════════════════════
+
+📋 STEPS (2 minutes):
+
+1. Go to Railway dashboard (you're already there!)
+
+2. Click "Settings" tab
+
+3. Scroll to "Deploy" section
+
+4. Find "Custom Start Command"
+
+5. Paste this:
+   uvicorn main:app --host 0.0.0.0 --port $PORT
+
+6. Click "Deploy" button (top right) to redeploy
+
+═══════════════════════════════════════════════════════
+
+✅ AFTER REDEPLOYING:
+
+Test it:
+  curl https://kbot13-production.up.railway.app/health
+
+Should return: {"status":"healthy",...}
+
+═══════════════════════════════════════════════════════
+
+That's it! The start command tells Railway how to run your app
+on the correct port.

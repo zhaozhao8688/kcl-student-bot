@@ -1,0 +1,38 @@
+🚀 REDEPLOY WITH DOCKER (FIXED)
+
+I've updated railway.json to force Docker build.
+
+═══════════════════════════════════════════════════════
+
+📋 RUN THESE COMMANDS:
+
+cd backend
+railway up
+
+═══════════════════════════════════════════════════════
+
+⚠️ IF IT STILL FAILS, USE RAILWAY DASHBOARD:
+
+1. Go to: https://railway.com/dashboard
+2. Find your project
+3. Click on your service
+4. Go to "Settings" tab
+5. Scroll to "Build" section
+6. Change "Builder" from "Nixpacks" to "Dockerfile"
+7. Save
+8. Click "Deploy" to redeploy
+
+═══════════════════════════════════════════════════════
+
+✅ AFTER SUCCESSFUL DEPLOY:
+
+railway domain    # Get your URL
+curl https://your-url.railway.app/health
+
+═══════════════════════════════════════════════════════
+
+The railway.json now specifies:
+  "builder": "DOCKERFILE"
+
+This forces Railway to use the Dockerfile instead of trying
+to auto-detect with nixpacks!
