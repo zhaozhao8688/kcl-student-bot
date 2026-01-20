@@ -61,21 +61,29 @@ def render_sidebar() -> None:
         ical_url = st.text_area(
             "iCal Subscription URL",
             value=current_url,
-            height=100,
-            placeholder="https://scientia-eu-v4-api-d4-02.azurewebsites.net/api/ical/...",
+            height=150,
+            placeholder="https://scientia-eu-v4-api-d4-02.azurewebsites.net/api/ical/ca05f91a-6c36-45db-9b40-6d011398ed58/3cdaebfe-203e-72d4-7a79-...",
             help="Get this from your KCL timetable → Subscribe → Manual subscription"
         )
 
         if st.button("💾 Save Timetable URL", use_container_width=True, type="primary"):
             if ical_url and ical_url.strip():
-                SessionManager.set_ical_url(ical_url.strip())
-                st.success("✅ Timetable URL saved!")
-                st.rerun()
+                url = ical_url.strip()
+                # Basic validation
+                if url.startswith("http") and "ical" in url.lower():
+                    SessionManager.set_ical_url(url)
+                    st.success("✅ Timetable URL saved!")
+                    st.rerun()
+                else:
+                    st.error("⚠️ This doesn't look like a valid iCal URL. Please check and try again.")
             else:
                 st.warning("Please enter a valid URL")
 
         if SessionManager.has_ical_url():
             st.success("✅ Timetable connected")
+            # Show part of the URL for confirmation
+            saved_url = SessionManager.get_ical_url()
+            st.caption(f"URL: {saved_url[:60]}..." if len(saved_url) > 60 else saved_url)
             if st.button("🗑️ Remove Timetable", use_container_width=True):
                 SessionManager.set_ical_url("")
                 st.rerun()

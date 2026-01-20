@@ -26,14 +26,18 @@ def router_node(state: AgentState) -> Dict[str, Any]:
 
     query = state["query"].lower()
 
-    # Determine query type and required tools
-    needs_timetable = any(keyword in query for keyword in [
-        "timetable", "schedule", "class", "lecture", "when is my"
-    ])
+    # Determine query type and required tools - expand timetable keywords
+    timetable_keywords = [
+        "timetable", "schedule", "class", "lecture", "lesson",
+        "when is my", "what do i have", "show me my",
+        "tomorrow", "tmr", "today", "this week", "next week",
+        "professor", "teacher", "instructor", "module", "course"
+    ]
 
-    needs_search = not needs_timetable or any(keyword in query for keyword in [
-        "what", "where", "who", "how", "when", "why", "information", "about"
-    ])
+    needs_timetable = any(keyword in query for keyword in timetable_keywords)
+
+    # Only search if it's not a pure timetable query
+    needs_search = not needs_timetable
 
     needs_scraping = needs_search  # Scrape top result if we search
 
@@ -118,16 +122,24 @@ def timetable_node(state: AgentState) -> Dict[str, Any]:
 
     ical_url = state.get("ical_url")
     if not ical_url:
-        logger.info("No iCal URL provided")
+        logger.warning("No iCal URL provided for timetable query")
         return {
             "timetable_events": None,
             "final_response": "To access your timetable, please add your iCal subscription URL in the sidebar.\n\n**How to get your iCal URL:**\n1. Go to your KCL timetable (Scientia)\n2. Click 'Subscribe' button\n3. Copy the URL from 'Manual subscription' section\n4. Paste it in the sidebar"
         }
 
-    logger.info("Fetching timetable")
+    logger.info(f"Fetching timetable from URL: {ical_url[:50]}...")
     timetable_tool = tool_registry.get_tool("timetable")
     events = timetable_tool.execute(ical_url=ical_url, days_ahead=7)
 
+    if not events:
+        logger.warning("No events returned from timetable")
+        return {
+            "timetable_events": None,
+            "final_response": "I couldn't retrieve your timetable. Please check:\n1. Your iCal URL is complete and correct\n2. The URL hasn't expired\n3. You have an active internet connection\n\nTry getting a fresh iCal URL from your KCL timetable."
+        }
+
+    logger.info(f"Successfully retrieved {len(events)} timetable events")
     return {"timetable_events": events}
 
 
