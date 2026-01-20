@@ -11,18 +11,16 @@ services:
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
-      - key: PORT
-        generateValue: false
       - key: OPENROUTER_API_KEY
-        sync: false
+        value: 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
       - key: SUPABASE_URL
-        sync: false
+        value: https://vmtuttkmxrxsozyrtirw.supabase.co
       - key: SUPABASE_KEY
-        sync: false
+        value: sb_publishable_gUvKQxFlsT-QIuHgtTjyYg_EI1MdGqL
       - key: SERPAPI_API_KEY
-        sync: false
+        value: 71abaee6398044473d2d6cdf5bb61ab473b394ca74b5ba354e6741aed503b4de
       - key: FIRECRAWL_API_KEY
-        sync: false
+        value: fc-7f6944361db34b1caf88b4044df2548c
       - key: APP_ENV
         value: production
       - key: LOG_LEVEL
