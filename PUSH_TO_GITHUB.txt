@@ -1,0 +1,63 @@
+═══════════════════════════════════════════════════════
+📦 PUSH YOUR CODE TO GITHUB (2 minutes)
+═══════════════════════════════════════════════════════
+
+YOUR GITHUB INFO:
+✅ Username: zhaozhao8688
+✅ Repo name: kcl-student-bot
+✅ Code is ready to push!
+
+═══════════════════════════════════════════════════════
+
+STEP 1: CREATE REPOSITORY ON GITHUB
+(Do this in your web browser)
+
+1. Open: https://github.com/new
+
+2. Repository name: kcl-student-bot
+
+3. Description: KCL Student Bot - AI assistant
+
+4. Public or Private: Choose one
+
+5. ❌ DO NOT check any boxes (no README, no .gitignore)
+
+6. Click "Create repository"
+
+═══════════════════════════════════════════════════════
+
+STEP 2: PUSH YOUR CODE
+(Do this in terminal)
+
+Open Terminal and run:
+
+cd /Users/harrisonzhao/Documents/KCL\ bot
+git push -u origin main
+
+If it asks for credentials:
+- Username: zhaozhao8688
+- Password: Use a Personal Access Token
+
+═══════════════════════════════════════════════════════
+
+NEED A TOKEN?
+
+1. Go to: https://github.com/settings/tokens
+2. Click "Generate new token" → "classic"
+3. Name: KCL Bot
+4. Check: "repo"
+5. Generate and COPY the token
+6. Use this as your password
+
+═══════════════════════════════════════════════════════
+
+DONE?
+
+Go to: https://github.com/zhaozhao8688/kcl-student-bot
+You should see your code!
+
+Next: Follow QUICK_START_RENDER.md to deploy! 🚀
+
+═══════════════════════════════════════════════════════
+
+Questions? Read: GITHUB_SETUP.md
