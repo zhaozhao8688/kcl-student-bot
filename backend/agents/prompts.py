@@ -75,9 +75,37 @@ The timetable tool requires the user to have set up their iCal subscription URL.
 Remember: Always respond with valid JSON. No markdown code fences in the actual response - just the raw JSON object."""
 
 
+PLANNING_PROMPT = """You are analyzing a user query to create a high-level strategy for answering it.
+
+## User Query
+{query}
+
+## Available Tools
+{tool_list}
+
+## Instructions
+Analyze the query and produce a brief strategy (2-3 sentences) describing:
+- What type of information is needed to answer this query
+- Which tools might be useful and in what order
+- The general approach to answer the question effectively
+
+## Response Format
+You MUST respond with valid JSON in exactly this format:
+
+```json
+{{
+  "strategy": "Your 2-3 sentence strategy describing the approach",
+  "reasoning": "Brief explanation of why this approach makes sense"
+}}
+```
+
+Remember: Always respond with valid JSON. No markdown code fences in the actual response - just the raw JSON object."""
+
+
 def get_react_system_prompt(
     tool_history: str = "",
-    has_ical_url: bool = False
+    has_ical_url: bool = False,
+    plan: str = ""
 ) -> str:
     """
     Generate the ReAct system prompt with current context.
@@ -85,6 +113,7 @@ def get_react_system_prompt(
     Args:
         tool_history: Formatted history of previous tool calls in this session
         has_ical_url: Whether the user has set up their iCal URL
+        plan: Optional high-level strategy from planning step
 
     Returns:
         Complete system prompt string
@@ -92,6 +121,9 @@ def get_react_system_prompt(
     tool_definitions = get_tool_definitions_text()
 
     context_parts = []
+
+    if plan:
+        context_parts.append(f"Strategy: {plan}")
 
     if tool_history:
         context_parts.append(f"Previous actions in this conversation:\n{tool_history}")
@@ -106,6 +138,23 @@ def get_react_system_prompt(
     return REACT_SYSTEM_PROMPT.format(
         tool_definitions=tool_definitions,
         context=context
+    )
+
+
+def get_planning_prompt(query: str, tool_list: str) -> str:
+    """
+    Generate the planning prompt for strategy creation.
+
+    Args:
+        query: User's query message
+        tool_list: List of available tools
+
+    Returns:
+        Complete planning prompt string
+    """
+    return PLANNING_PROMPT.format(
+        query=query,
+        tool_list=tool_list
     )
 
 

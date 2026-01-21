@@ -8,12 +8,98 @@ from typing import Dict, Any, Literal
 from datetime import datetime
 
 from agents.react_state import ReActState
-from agents.prompts import get_react_system_prompt, format_tool_history
+from agents.prompts import get_react_system_prompt, format_tool_history, get_planning_prompt
 from tools.tool_registry import tool_registry
+from tools.tool_definitions import get_tool_definitions_text
 from services.llm_service import llm_service
+from config.settings import settings
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
+
+
+def planning_node(state: ReActState) -> Dict[str, Any]:
+    """
+    Analyze the query and produce a high-level strategy before reasoning.
+    This is an optional first step that runs when planning is enabled.
+
+    Args:
+        state: Current ReAct state
+
+    Returns:
+        Updated state with plan and plan_reasoning (or empty if planning disabled)
+    """
+    # Check if planning is enabled
+    if not settings.enable_planning:
+        logger.info("Planning disabled, skipping planning node")
+        return {}
+
+    logger.info("Planning step - analyzing query and creating strategy")
+
+    query = state.get("query", "")
+    tool_list = get_tool_definitions_text()
+
+    # Build planning prompt
+    planning_prompt = get_planning_prompt(query=query, tool_list=tool_list)
+
+    try:
+        # Call LLM for planning
+        response = llm_service.generate(
+            messages=[{"role": "user", "content": planning_prompt}],
+            temperature=0.3,
+            max_tokens=500
+        )
+
+        if not response or not response.strip():
+            logger.warning("Planning received empty response, skipping")
+            return {}
+
+        # Parse JSON response
+        parsed = _parse_planning_response(response)
+        strategy = parsed.get("strategy", "")
+        reasoning = parsed.get("reasoning", "")
+
+        logger.info(f"Planning complete - strategy: {strategy[:100]}...")
+
+        return {
+            "plan": strategy,
+            "plan_reasoning": reasoning
+        }
+
+    except Exception as e:
+        logger.error(f"Error in planning node: {str(e)}")
+        # Planning errors are non-fatal, just skip planning
+        return {}
+
+
+def _parse_planning_response(response: str) -> Dict[str, Any]:
+    """
+    Parse the planning LLM response as JSON.
+
+    Args:
+        response: Raw LLM response string
+
+    Returns:
+        Parsed JSON as dictionary
+    """
+    # Clean the response - remove markdown code fences if present
+    cleaned = response.strip()
+
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+
+    cleaned = cleaned.strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse planning JSON response: {e}")
+        return {"strategy": "", "reasoning": ""}
 
 
 def reasoning_node(state: ReActState) -> Dict[str, Any]:
@@ -43,11 +129,13 @@ def reasoning_node(state: ReActState) -> Dict[str, Any]:
     tool_calls = state.get("tool_calls", [])
     tool_history = format_tool_history(tool_calls)
 
-    # Get system prompt
+    # Get system prompt (include plan if available)
     has_ical_url = bool(state.get("ical_url"))
+    plan = state.get("plan", "")
     system_prompt = get_react_system_prompt(
         tool_history=tool_history,
-        has_ical_url=has_ical_url
+        has_ical_url=has_ical_url,
+        plan=plan
     )
 
     # Build user message

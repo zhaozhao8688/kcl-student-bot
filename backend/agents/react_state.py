@@ -8,6 +8,8 @@ from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 from datetime import datetime
 
+from config.settings import settings
+
 
 class ToolCall(BaseModel):
     """Record of a single tool call in the ReAct loop."""
@@ -62,22 +64,37 @@ class ReActState(TypedDict):
     # Conversation history (for memory)
     conversation_history: Optional[List[Dict[str, str]]]
 
+    # Planning (optional)
+    plan: Optional[str]           # High-level strategy
+    plan_reasoning: Optional[str] # Why this approach
+
 
 def create_initial_state(
     query: str,
     user_id: str = "",
     ical_url: Optional[str] = None,
-    max_iterations: int = 5,
+    max_iterations: Optional[int] = None,
     conversation_history: Optional[List[Dict[str, str]]] = None
 ) -> ReActState:
-    """Create initial state for ReAct agent."""
+    """Create initial state for ReAct agent.
+
+    Args:
+        query: User's query message
+        user_id: User/session identifier
+        ical_url: Optional iCal URL for timetable queries
+        max_iterations: Maximum reasoning loops (defaults to settings.max_agent_iterations)
+        conversation_history: Optional list of previous messages
+
+    Returns:
+        Initialized ReActState
+    """
     return ReActState(
         messages=[],
         user_id=user_id,
         is_authenticated=False,
         query=query,
         current_iteration=0,
-        max_iterations=max_iterations,
+        max_iterations=max_iterations if max_iterations is not None else settings.max_agent_iterations,
         should_stop=False,
         current_thought=None,
         current_action=None,
@@ -87,5 +104,7 @@ def create_initial_state(
         tool_calls=[],
         final_response=None,
         ical_url=ical_url,
-        conversation_history=conversation_history
+        conversation_history=conversation_history,
+        plan=None,
+        plan_reasoning=None
     )

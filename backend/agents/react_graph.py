@@ -6,6 +6,7 @@ Implements a Reasoning-Action-Observation loop with conditional edges.
 from langgraph.graph import StateGraph, END
 from agents.react_state import ReActState
 from agents.react_nodes import (
+    planning_node,
     reasoning_node,
     tool_execution_node,
     observation_node,
@@ -20,10 +21,10 @@ def create_react_agent_graph():
     """
     Create and compile the ReAct agent workflow graph.
 
-    The graph implements a loop:
-        reasoning_node -> [tool_execution | END]
-               ^              |
-               └── observation_node
+    The graph implements a loop with optional planning:
+        planning_node -> reasoning_node -> [tool_execution | END]
+                               ^                   |
+                               └── observation_node
 
     Returns:
         Compiled LangGraph graph
@@ -34,12 +35,16 @@ def create_react_agent_graph():
     workflow = StateGraph(ReActState)
 
     # Add nodes
+    workflow.add_node("planning", planning_node)
     workflow.add_node("reasoning", reasoning_node)
     workflow.add_node("tool_execution", tool_execution_node)
     workflow.add_node("observation", observation_node)
 
-    # Set entry point
-    workflow.set_entry_point("reasoning")
+    # Entry point is now planning (which may skip if disabled)
+    workflow.set_entry_point("planning")
+
+    # Planning always goes to reasoning
+    workflow.add_edge("planning", "reasoning")
 
     # Add conditional edges from reasoning node
     # If should_stop=True or action=final_answer -> END

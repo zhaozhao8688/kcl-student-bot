@@ -81,12 +81,11 @@ async def process_chat(
     try:
         logger.info(f"Processing query for session {session_id}: {query}")
 
-        # Prepare initial state for ReAct agent
+        # Prepare initial state for ReAct agent (max_iterations defaults to settings)
         initial_state = create_initial_state(
             query=query,
             user_id=session_id,
             ical_url=ical_url,
-            max_iterations=5,
             conversation_history=conversation_history
         )
 

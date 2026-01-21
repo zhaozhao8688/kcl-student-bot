@@ -9,6 +9,7 @@ from typing import Optional, AsyncGenerator
 from datetime import datetime
 from agents.react_graph import create_react_agent_graph
 from agents.react_state import create_initial_state
+from config.settings import settings
 from services.supabase_service import supabase_service
 from utils.logger import setup_logger
 
@@ -50,16 +51,15 @@ async def stream_chat(
             yield _sse_event("done", {"message": "Stream complete with error"})
             return
 
-        # Prepare initial state
+        # Prepare initial state (max_iterations defaults to settings.max_agent_iterations)
         try:
             initial_state = create_initial_state(
                 query=query,
                 user_id=session_id,
                 ical_url=ical_url,
-                max_iterations=5,
                 conversation_history=conversation_history
             )
-            logger.info(f"Initial state created with keys: {list(initial_state.keys())}")
+            logger.info(f"Initial state created with max_iterations={settings.max_agent_iterations}")
         except Exception as state_err:
             import traceback
             logger.error(f"Failed to create initial state: {state_err}")
@@ -81,10 +81,25 @@ async def stream_chat(
             event_type = event.get("type")
             data = event.get("data", {})
 
-            if event_type == "reasoning_start":
-                current_iteration = data.get("iteration", 0)
+            if event_type == "planning_start":
                 yield _sse_event("log", {
-                    "content": f"ReAct reasoning - iteration {current_iteration}/5",
+                    "content": "Planning approach...",
+                    "iteration": 0
+                })
+
+            elif event_type == "planning_complete":
+                strategy = data.get("strategy", "")
+                if strategy:
+                    yield _sse_event("log", {
+                        "content": f"Strategy: {strategy[:100]}{'...' if len(strategy) > 100 else ''}",
+                        "iteration": 0
+                    })
+
+            elif event_type == "reasoning_start":
+                current_iteration = data.get("iteration", 0)
+                max_iter = settings.max_agent_iterations
+                yield _sse_event("log", {
+                    "content": f"ReAct reasoning - iteration {current_iteration}/{max_iter}",
                     "iteration": current_iteration
                 })
 
@@ -221,7 +236,20 @@ async def _run_graph_with_events(graph, initial_state) -> AsyncGenerator[dict, N
                     logger.debug(f"Graph node '{node_name}' returned state keys: {list(node_state.keys())}")
                     current_iteration = node_state.get("current_iteration", 0)
 
-                    if node_name == "reasoning":
+                    if node_name == "planning":
+                        # Emit planning events
+                        plan = node_state.get("plan", "")
+                        if plan:
+                            event_queue.put({
+                                "type": "planning_start",
+                                "data": {}
+                            })
+                            event_queue.put({
+                                "type": "planning_complete",
+                                "data": {"strategy": plan, "reasoning": node_state.get("plan_reasoning", "")}
+                            })
+
+                    elif node_name == "reasoning":
                         # Emit reasoning events
                         if current_iteration > last_iteration:
                             event_queue.put({
