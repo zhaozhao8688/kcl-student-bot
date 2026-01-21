@@ -32,9 +32,11 @@ def reasoning_node(state: ReActState) -> Dict[str, Any]:
 
     logger.info(f"ReAct reasoning - iteration {iteration}/{max_iterations}")
 
-    # Check iteration limit
+    # Check iteration limit - if we've exceeded max, force a fallback response
+    # Note: We use > because we want to allow iteration == max_iterations to still try LLM
+    # The router will catch this after and end the loop if needed
     if iteration > max_iterations:
-        logger.warning(f"Max iterations ({max_iterations}) reached, forcing final answer")
+        logger.warning(f"Exceeded max iterations ({max_iterations}) at iteration {iteration}, forcing final answer")
         return _generate_fallback_response(state, iteration)
 
     # Build context from tool history
@@ -100,6 +102,11 @@ def reasoning_node(state: ReActState) -> Dict[str, Any]:
 
         # Check if this is a final answer
         should_stop = (action == "final_answer")
+
+        # If we're at max iterations and LLM didn't give final_answer, force stop with fallback
+        if not should_stop and iteration >= max_iterations:
+            logger.warning(f"At max iteration {iteration} but action is '{action}' not 'final_answer'. Forcing fallback.")
+            return _generate_fallback_response(state, iteration)
 
         # Extract final response if this is the end
         final_response = None
@@ -306,6 +313,13 @@ def should_continue(state: ReActState) -> Literal["tool", "end"]:
     Returns:
         "end" if should stop, "tool" if should continue to tool execution
     """
+    # Log current state for debugging
+    has_response = bool(state.get("final_response"))
+    logger.info(f"Router check - iteration: {state.get('current_iteration', 0)}, "
+                f"should_stop: {state.get('should_stop', False)}, "
+                f"action: {state.get('current_action', 'None')}, "
+                f"has_response: {has_response}")
+
     if state.get("should_stop", False):
         logger.info("Router: should_stop is True, ending loop")
         return "end"
@@ -320,6 +334,11 @@ def should_continue(state: ReActState) -> Literal["tool", "end"]:
     action = state.get("current_action", "")
     if action == "final_answer":
         logger.info("Router: action is final_answer, ending loop")
+        return "end"
+
+    # If we don't have an action to execute, we should stop
+    if not action:
+        logger.warning("Router: no action specified, ending loop")
         return "end"
 
     logger.info(f"Router: continuing to tool execution (action: {action})")
