@@ -5,21 +5,25 @@ An AI-powered chat assistant for King's College London students that provides in
 ## ✨ Features
 
 - 💬 **Modern React UI**: Clean, responsive interface with Tailwind CSS
+- 🎨 **Markdown Support**: Formatted AI responses with code blocks, lists, headers, and more
 - 🔍 **Web Search**: Intelligent search for KCL-related information
 - 📅 **Timetable Integration**: Sync your personal timetable via iCal URL
-- 🤖 **AI-Powered Responses**: Context-aware answers using Claude 3.5 Sonnet
+- 🤖 **AI-Powered Responses**: Context-aware answers using Claude 3.5 Sonnet (configurable)
+- ⚙️ **Flexible Model Configuration**: Switch between AI models via environment variables
 - 💾 **Chat History**: Persistent storage in Supabase
 - 🗑️ **Clear Chat**: Easy reset of conversation history
 - 🔓 **No Login Required**: Simple timetable URL paste for schedule access
+- 🔧 **Auto-retry on Errors**: Automatic API key verification and error handling
 
 ## 🚀 Quick Start Navigation
 
 Choose your path:
 
-1. **Local Development** → [GETTING_STARTED.md](./GETTING_STARTED.md) - Set up and run on your machine
+1. **Local Development** → [LOCAL_TESTING.md](./LOCAL_TESTING.md) - Automated setup and local testing guide
 2. **Quick Deploy (15 min)** → [QUICK_START_RENDER.md](./QUICK_START_RENDER.md) - Fast deployment to Render
 3. **Detailed Deployment** → [RENDER_DEPLOY.md](./RENDER_DEPLOY.md) - Step-by-step deployment guide with screenshots
-4. **Troubleshooting URLs** → [WHICH_URL.md](./WHICH_URL.md) - Understanding frontend vs backend URLs
+4. **Model Configuration** → [MODEL_CONFIGURATION.md](./MODEL_CONFIGURATION.md) - Change AI models via environment variables
+5. **Troubleshooting** → [backend/OPENROUTER_DEBUG_README.md](./backend/OPENROUTER_DEBUG_README.md) - Fix OpenRouter 401 errors
 
 ## 🏗️ Architecture
 
@@ -44,10 +48,10 @@ Choose your path:
 ```
 
 **Tech Stack:**
-- **Frontend**: React 18, Tailwind CSS, Axios, Lucide Icons
+- **Frontend**: React 18, Tailwind CSS, Axios, React Markdown, Lucide Icons
 - **Backend**: FastAPI, Python 3.11+
 - **Agent System**: LangGraph (workflow orchestration)
-- **LLM**: OpenRouter (Claude 3.5 Sonnet)
+- **LLM**: OpenRouter (Claude 3.5 Sonnet, configurable)
 - **Database**: Supabase
 - **Tools**: SerpAPI (search), Firecrawl (scraping), iCalendar (timetable)
 
@@ -120,9 +124,22 @@ Visit **http://localhost:3000** to start chatting!
 
 ## 📚 Documentation
 
-- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Detailed setup guide & troubleshooting
-- **[MIGRATION_README.md](MIGRATION_README.md)** - Architecture overview & deployment
-- **[STATUS.md](STATUS.md)** - Current system status & health checks
+### Getting Started
+- **[LOCAL_TESTING.md](LOCAL_TESTING.md)** - Local setup with automated scripts
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Manual setup guide & troubleshooting
+
+### Deployment
+- **[QUICK_START_RENDER.md](QUICK_START_RENDER.md)** - Fast Render deployment (15 min)
+- **[RENDER_DEPLOY.md](RENDER_DEPLOY.md)** - Detailed deployment guide with screenshots
+- **[RENDER_UI_GUIDE.md](RENDER_UI_GUIDE.md)** - Navigating Render dashboard
+
+### Configuration & Troubleshooting
+- **[MODEL_CONFIGURATION.md](MODEL_CONFIGURATION.md)** - Switch AI models easily
+- **[backend/OPENROUTER_DEBUG_README.md](backend/OPENROUTER_DEBUG_README.md)** - Fix 401 errors
+- **[WHICH_URL.md](WHICH_URL.md)** - Understanding frontend vs backend URLs
+
+### Architecture
+- **[MIGRATION_README.md](MIGRATION_README.md)** - Architecture overview & system design
 
 ## 🔧 Configuration
 
@@ -131,12 +148,20 @@ Visit **http://localhost:3000** to start chatting!
 Create `backend/.env` with:
 
 ```env
+# OpenRouter API
 OPENROUTER_API_KEY=your_key
+DEFAULT_MODEL=anthropic/claude-3.5-sonnet  # Optional: change AI model
+
+# Database
 SUPABASE_URL=your_url
 SUPABASE_KEY=your_key
+
+# Tools
 SERPAPI_API_KEY=your_key
 FIRECRAWL_API_KEY=your_key
 ```
+
+See [MODEL_CONFIGURATION.md](MODEL_CONFIGURATION.md) for available models.
 
 ### Frontend (.env.local)
 
