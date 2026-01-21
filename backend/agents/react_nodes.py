@@ -473,6 +473,7 @@ def _format_tool_result(tool_name: str, result: Any) -> str:
 def _generate_fallback_response(state: ReActState, iteration: int) -> Dict[str, Any]:
     """
     Generate a fallback response when max iterations are reached.
+    Uses the LLM to summarize gathered information into a proper response.
 
     Args:
         state: Current ReAct state
@@ -481,21 +482,57 @@ def _generate_fallback_response(state: ReActState, iteration: int) -> Dict[str, 
     Returns:
         State update with fallback final response
     """
-    # Compile what we know from tool calls
     tool_calls = state.get("tool_calls", [])
+    query = state.get("query", "")
 
     if not tool_calls:
         response = "I apologize, but I wasn't able to find the information you requested. Could you please rephrase your question?"
     else:
-        # Compile results from successful tool calls
+        # Compile results from successful tool calls (truncated)
         successful_results = []
         for call in tool_calls:
             if call.get("result") and not call.get("error"):
-                successful_results.append(f"From {call['tool_name']}:\n{call['result']}")
+                result = str(call.get("result", ""))
+                # Truncate long results
+                if len(result) > 1000:
+                    result = result[:1000] + "..."
+                successful_results.append(f"From {call['tool_name']}:\n{result}")
 
         if successful_results:
+            # Use LLM to summarize the gathered information
             compiled_info = "\n\n".join(successful_results)
-            response = f"Based on the information I gathered:\n\n{compiled_info}\n\nNote: I reached my reasoning limit, so this response may be incomplete."
+
+            try:
+                summary_prompt = f"""Based on the following information gathered from various tools, provide a helpful and concise response to the user's question.
+
+User's question: {query}
+
+Information gathered:
+{compiled_info[:3000]}
+
+Instructions:
+- Provide a direct, helpful answer based on the information above
+- If the information doesn't fully answer the question, acknowledge that
+- Keep your response concise and well-formatted
+- Do NOT include raw HTML, navigation elements, or irrelevant content
+- Focus on the most relevant information
+
+Your response:"""
+
+                summary_response = llm_service.generate(
+                    messages=[{"role": "user", "content": summary_prompt}],
+                    temperature=0.5,
+                    max_tokens=500
+                )
+
+                if summary_response and summary_response.strip():
+                    response = summary_response.strip()
+                else:
+                    response = "I found some information but couldn't generate a proper summary. Please try asking your question differently."
+
+            except Exception as e:
+                logger.error(f"Error generating summary: {e}")
+                response = "I found some information but encountered an error while summarizing it. Please try again."
         else:
             response = "I apologize, but I encountered issues while trying to find information for your request. Please try again or rephrase your question."
 
