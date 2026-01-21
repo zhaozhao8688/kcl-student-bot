@@ -10,17 +10,20 @@ services:
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
+    # IMPORTANT: Configure these environment variables in Render Dashboard
+    # Go to: Service Settings → Environment tab → Add Environment Variable
+    # DO NOT commit actual API key values to this file
     envVars:
       - key: OPENROUTER_API_KEY
-        value: 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
+        # Set in Render dashboard - OpenRouter API key for LLM access
       - key: SUPABASE_URL
-        value: https://vmtuttkmxrxsozyrtirw.supabase.co
+        # Set in Render dashboard - Supabase project URL
       - key: SUPABASE_KEY
-        value: sb_publishable_gUvKQxFlsT-QIuHgtTjyYg_EI1MdGqL
+        # Set in Render dashboard - Supabase anonymous/public key
       - key: SERPAPI_API_KEY
-        value: 71abaee6398044473d2d6cdf5bb61ab473b394ca74b5ba354e6741aed503b4de
+        # Set in Render dashboard - SerpAPI key for search functionality
       - key: FIRECRAWL_API_KEY
-        value: fc-7f6944361db34b1caf88b4044df2548c
+        # Set in Render dashboard - Firecrawl API key for web scraping
       - key: APP_ENV
         value: production
       - key: LOG_LEVEL
