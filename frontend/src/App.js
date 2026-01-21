@@ -31,33 +31,26 @@ function App() {
   // Initialize session on mount
   useEffect(() => {
     const initSession = async () => {
+      // Add initial AI message immediately
+      setMessages([
+        {
+          id: '1',
+          role: 'ai',
+          content:
+            "Hey! I'm your King's AI assistant. Ask me anything about campus, libraries, or where to get the best coffee. You can also sync your timetable above!",
+          timestamp: new Date().toISOString()
+        }
+      ]);
+
+      // Try to create session in background
       try {
         const res = await sessionAPI.create();
         setSessionId(res.session_id);
         console.log('Session created:', res.session_id);
-
-        // Add initial AI message
-        setMessages([
-          {
-            id: '1',
-            role: 'ai',
-            content:
-              "Hey! I'm your King's AI assistant. Ask me anything about campus, libraries, or where to get the best coffee. You can also sync your timetable above!",
-            timestamp: new Date().toISOString()
-          }
-        ]);
       } catch (error) {
-        console.error('Error creating session:', error);
-        // Add error message
-        setMessages([
-          {
-            id: 'error',
-            role: 'ai',
-            content:
-              "Sorry, I'm having trouble connecting to the server. Please refresh the page and try again.",
-            timestamp: new Date().toISOString()
-          }
-        ]);
+        console.error('Error creating session on mount:', error);
+        // Don't show error - session will be created on first message
+        console.log('Session will be created on first message');
       }
     };
 
@@ -66,9 +59,28 @@ function App() {
 
   // Handle sending a message
   const handleSendMessage = async (query) => {
-    if (!sessionId) {
-      console.error('No session ID available');
-      return;
+    // Create session if not exists
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      try {
+        console.log('Creating session on first message...');
+        const res = await sessionAPI.create();
+        currentSessionId = res.session_id;
+        setSessionId(currentSessionId);
+        console.log('Session created:', currentSessionId);
+      } catch (error) {
+        console.error('Failed to create session:', error);
+        // Add error message
+        const errorMsg = {
+          id: `error-${Date.now()}`,
+          role: 'ai',
+          content:
+            "I'm sorry, I can't connect to the server right now. Please check your internet connection and try again.",
+          timestamp: new Date().toISOString()
+        };
+        setMessages((prev) => [...prev, errorMsg]);
+        return;
+      }
     }
 
     // Add user message to UI
@@ -83,7 +95,7 @@ function App() {
 
     try {
       // Call API
-      const res = await chatAPI.sendMessage(query, sessionId, icalUrl || null);
+      const res = await chatAPI.sendMessage(query, currentSessionId, icalUrl || null);
 
       // Add AI response to UI
       const aiMsg = {
@@ -195,7 +207,7 @@ function App() {
       </main>
 
       {/* Chat Input */}
-      <ChatInput onSend={handleSendMessage} disabled={isLoading || !sessionId} />
+      <ChatInput onSend={handleSendMessage} disabled={isLoading} />
     </div>
   );
 }
