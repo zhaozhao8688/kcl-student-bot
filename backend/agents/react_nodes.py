@@ -69,16 +69,27 @@ def reasoning_node(state: ReActState) -> Dict[str, Any]:
 
     try:
         # Call LLM with lower temperature for consistent JSON output
+        logger.info(f"Calling LLM with {len(messages)} messages")
         response = llm_service.generate(
             messages=messages,
             temperature=0.3,
             max_tokens=1500
         )
 
+        logger.info(f"LLM response length: {len(response) if response else 0}")
         logger.debug(f"LLM response: {response}")
+
+        if not response:
+            logger.error("LLM returned empty response")
+            return {
+                "current_iteration": iteration,
+                "should_stop": True,
+                "final_response": "I received an empty response from the AI model. Please try again."
+            }
 
         # Parse JSON response
         parsed = _parse_react_response(response)
+        logger.info(f"Parsed response - action: {parsed.get('action')}, has_thought: {bool(parsed.get('thought'))}")
 
         thought = parsed.get("thought", "")
         action = parsed.get("action", "final_answer")
@@ -130,12 +141,22 @@ def reasoning_node(state: ReActState) -> Dict[str, Any]:
         }
 
     except Exception as e:
+        import traceback
         logger.error(f"Error in reasoning node: {str(e)}")
+        logger.error(traceback.format_exc())
         # On error, treat as final answer with error message
+        error_msg = str(e)
+        # Don't expose internal errors to users, but log them
+        if "api_key" in error_msg.lower() or "unauthorized" in error_msg.lower():
+            user_error = "There was an authentication error with the AI service. Please contact support."
+        elif "timeout" in error_msg.lower():
+            user_error = "The request timed out. Please try again."
+        else:
+            user_error = "I encountered an error while processing your request. Please try again."
         return {
             "current_iteration": iteration,
             "should_stop": True,
-            "final_response": f"I encountered an error while processing your request. Please try again."
+            "final_response": user_error
         }
 
 

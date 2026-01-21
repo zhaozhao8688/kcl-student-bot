@@ -37,7 +37,15 @@ async def stream_chat(
         yield _sse_event("status", {"message": "Starting agent..."})
 
         # Create a fresh graph for this request (to avoid state issues)
-        graph = create_react_agent_graph()
+        logger.info(f"Creating ReAct graph for query: {query[:50]}...")
+        try:
+            graph = create_react_agent_graph()
+            logger.info("Graph created successfully")
+        except Exception as graph_err:
+            logger.error(f"Failed to create graph: {graph_err}")
+            yield _sse_event("error", {"message": f"Failed to initialize agent: {str(graph_err)}"})
+            yield _sse_event("done", {"message": "Stream complete with error"})
+            return
 
         # Prepare initial state
         initial_state = create_initial_state(
@@ -47,12 +55,14 @@ async def stream_chat(
             max_iterations=5,
             conversation_history=conversation_history
         )
+        logger.info(f"Initial state created with keys: {list(initial_state.keys())}")
 
         yield _sse_event("log", {"content": f"Processing query: {query}"})
 
         # Run the graph with streaming
         current_iteration = 0
         final_response = None
+        graph_error = None
 
         # Use stream mode to get intermediate states
         async for event in _run_graph_with_events(graph, initial_state):
@@ -120,10 +130,21 @@ async def stream_chat(
                     "iteration": current_iteration
                 })
 
+            elif event_type == "graph_error":
+                # Capture error from graph execution
+                graph_error = data.get("error", "Unknown graph error")
+                logger.error(f"Graph error received: {graph_error}")
+                yield _sse_event("log", {
+                    "content": f"Error in agent: {graph_error}",
+                    "iteration": current_iteration
+                })
+
             elif event_type == "complete":
                 final_response = data.get("response", "")
                 iterations = data.get("iterations", 0)
                 tool_calls = data.get("tool_calls", 0)
+                if data.get("error"):
+                    graph_error = data.get("error")
                 yield _sse_event("log", {
                     "content": f"Completed in {iterations} iteration(s) with {tool_calls} tool call(s)",
                     "iteration": iterations
@@ -134,8 +155,11 @@ async def stream_chat(
             yield _sse_event("response", {"content": final_response})
         else:
             # Fallback response if agent didn't produce one
-            logger.warning("No final_response from agent, sending fallback")
-            fallback = "I apologize, but I wasn't able to generate a response. Please try asking your question again."
+            logger.warning(f"No final_response from agent. Graph error: {graph_error}")
+            if graph_error:
+                fallback = f"I encountered an error while processing your request: {graph_error}. Please try again."
+            else:
+                fallback = "I apologize, but I wasn't able to generate a response. Please try asking your question again."
             yield _sse_event("response", {"content": fallback})
             final_response = fallback
 
@@ -161,10 +185,12 @@ async def _run_graph_with_events(graph, initial_state) -> AsyncGenerator[dict, N
     """
     from queue import Queue, Empty
     import threading
+    import traceback
 
     loop = asyncio.get_running_loop()
     event_queue = Queue()
     final_result = {}
+    error_occurred = {"value": None}  # Use dict to allow mutation in nested function
 
     def run_graph_streaming():
         """Run graph.stream() in a thread and push events to queue."""
@@ -173,9 +199,14 @@ async def _run_graph_with_events(graph, initial_state) -> AsyncGenerator[dict, N
         last_tool_count = 0
 
         try:
+            logger.info("Starting graph.stream() execution")
+            stream_count = 0
+
             for state in graph.stream(initial_state):
+                stream_count += 1
                 # state is a dict with node name as key and updated state as value
                 for node_name, node_state in state.items():
+                    logger.debug(f"Graph node '{node_name}' returned state keys: {list(node_state.keys())}")
                     current_iteration = node_state.get("current_iteration", 0)
 
                     if node_name == "reasoning":
@@ -201,6 +232,10 @@ async def _run_graph_with_events(graph, initial_state) -> AsyncGenerator[dict, N
                                 "type": "action",
                                 "data": {"action": action, "action_input": action_input}
                             })
+
+                        # Check for final_response in reasoning node output
+                        if node_state.get("final_response"):
+                            logger.info(f"Got final_response from reasoning node: {node_state['final_response'][:100]}...")
 
                     elif node_name == "tool_execution":
                         # Emit tool events
@@ -240,12 +275,17 @@ async def _run_graph_with_events(graph, initial_state) -> AsyncGenerator[dict, N
                                 "data": {"observation": str(obs)[:300]}
                             })
 
-                    # Track final state
+                    # Track final state - merge updates
                     final_result.update(node_state)
 
+            logger.info(f"Graph stream completed after {stream_count} iterations. final_response present: {'final_response' in final_result and bool(final_result.get('final_response'))}")
+
         except Exception as e:
-            logger.error(f"Error in graph streaming: {e}")
-            event_queue.put({"type": "error", "data": {"error": str(e)}})
+            error_msg = f"Error in graph streaming: {str(e)}"
+            logger.error(error_msg)
+            logger.error(traceback.format_exc())
+            error_occurred["value"] = str(e)
+            event_queue.put({"type": "graph_error", "data": {"error": str(e), "traceback": traceback.format_exc()}})
         finally:
             event_queue.put(None)  # Signal completion
 
@@ -281,14 +321,21 @@ async def _run_graph_with_events(graph, initial_state) -> AsyncGenerator[dict, N
 
     thread.join()
 
-    # Emit complete event
+    # Emit complete event with error info if any
+    complete_data = {
+        "response": final_result.get("final_response", ""),
+        "iterations": final_result.get("current_iteration", 0),
+        "tool_calls": len(final_result.get("tool_calls", []))
+    }
+
+    if error_occurred["value"]:
+        complete_data["error"] = error_occurred["value"]
+
+    logger.info(f"Emitting complete event. Response length: {len(complete_data['response'])}, Error: {error_occurred['value']}")
+
     yield {
         "type": "complete",
-        "data": {
-            "response": final_result.get("final_response", ""),
-            "iterations": final_result.get("current_iteration", 0),
-            "tool_calls": len(final_result.get("tool_calls", []))
-        }
+        "data": complete_data
     }
 
 
