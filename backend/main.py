@@ -67,11 +67,37 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {
+    """Health check endpoint with API key validation."""
+    from config.settings import settings
+
+    health_status = {
         "status": "healthy",
-        "service": "kcl-student-bot-api"
+        "service": "kcl-student-bot-api",
+        "checks": {
+            "api": "ok"
+        }
     }
+
+    # Check if OpenRouter API key is configured
+    if not settings.openrouter_api_key:
+        health_status["status"] = "degraded"
+        health_status["checks"]["openrouter_api_key"] = "missing"
+        health_status["warning"] = "OpenRouter API key not configured"
+    else:
+        health_status["checks"]["openrouter_api_key"] = "configured"
+
+    # Check if other required keys are configured
+    if not settings.supabase_url or not settings.supabase_key:
+        health_status["status"] = "degraded"
+        health_status["checks"]["supabase"] = "missing"
+        if "warning" in health_status:
+            health_status["warning"] += ", Supabase credentials missing"
+        else:
+            health_status["warning"] = "Supabase credentials not configured"
+    else:
+        health_status["checks"]["supabase"] = "configured"
+
+    return health_status
 
 
 # Startup event
@@ -80,6 +106,24 @@ async def startup_event():
     """Run on application startup."""
     logger.info("KCL Student Bot API starting up...")
     logger.info("API documentation available at /docs")
+
+    # Verify OpenRouter API key
+    try:
+        from services.llm_service import llm_service
+        logger.info("Verifying OpenRouter API credentials...")
+
+        # Test with a minimal request
+        test_response = llm_service.generate(
+            messages=[{"role": "user", "content": "test"}],
+            max_tokens=5
+        )
+        logger.info("✅ OpenRouter API key verified successfully")
+        logger.info(f"Test response received: {len(test_response)} characters")
+    except Exception as e:
+        logger.error(f"❌ OpenRouter API key verification failed: {str(e)}")
+        logger.error("Please check your OPENROUTER_API_KEY in .env file")
+        logger.error("The API will start but chat functionality may not work")
+        # Don't fail startup - let the app run for other endpoints
 
 
 # Shutdown event

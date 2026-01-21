@@ -17,7 +17,11 @@ class LLMService:
         """Initialize OpenRouter client."""
         self.client = OpenAI(
             base_url=settings.openrouter_base_url,
-            api_key=settings.openrouter_api_key
+            api_key=settings.openrouter_api_key,
+            default_headers={
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "KCL Student Bot"
+            }
         )
         self.default_model = settings.default_model
         logger.info(f"LLM Service initialized with model: {self.default_model}")
@@ -87,5 +91,30 @@ class LLMService:
         return self.generate(messages, model, temperature, max_tokens)
 
 
-# Singleton instance
-llm_service = LLMService()
+# Lazy initialization for singleton
+_llm_service_instance = None
+
+
+def get_llm_service() -> LLMService:
+    """
+    Get or create LLM service instance (lazy initialization).
+    This allows the service to be recreated if settings change.
+    """
+    global _llm_service_instance
+    if _llm_service_instance is None:
+        _llm_service_instance = LLMService()
+    return _llm_service_instance
+
+
+def reset_llm_service():
+    """
+    Reset the LLM service instance.
+    Useful when API keys or settings change.
+    """
+    global _llm_service_instance
+    _llm_service_instance = None
+    logger.info("LLM service instance reset")
+
+
+# Singleton instance (backward compatibility)
+llm_service = get_llm_service()
