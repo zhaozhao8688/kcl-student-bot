@@ -1,0 +1,73 @@
+═══════════════════════════════════════════════════════
+🧪 QUICK LOCAL TEST (2 Terminals)
+═══════════════════════════════════════════════════════
+
+You need TWO terminal windows open at the same time.
+
+═══════════════════════════════════════════════════════
+
+TERMINAL 1: BACKEND
+═══════════════════════════════════════════════════════
+
+cd /Users/harrisonzhao/Documents/KCL\ bot/backend
+source venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+Expected: "Uvicorn running on http://0.0.0.0:8000"
+
+Test: Open http://localhost:8000/health in browser
+Should show: {"status":"healthy",...}
+
+═══════════════════════════════════════════════════════
+
+TERMINAL 2: FRONTEND (Open NEW terminal!)
+═══════════════════════════════════════════════════════
+
+cd /Users/harrisonzhao/Documents/KCL\ bot/frontend
+npm start
+
+Expected: "Compiled successfully!"
+Browser auto-opens at http://localhost:3000
+
+═══════════════════════════════════════════════════════
+
+✅ WHAT TO CHECK:
+═══════════════════════════════════════════════════════
+
+1. Input field enabled? ✅ (not grayed out)
+2. Can you type? ✅
+3. Send "Hello" message ✅
+4. Get AI response? ✅
+
+Press F12 in browser → Console tab
+Should see: "API Base URL: http://localhost:8000/api"
+
+═══════════════════════════════════════════════════════
+
+🛑 TO STOP:
+═══════════════════════════════════════════════════════
+
+Press Ctrl+C in BOTH terminals
+
+═══════════════════════════════════════════════════════
+
+⚠️ FIRST TIME SETUP:
+═══════════════════════════════════════════════════════
+
+If you get errors, run these FIRST:
+
+# Backend setup (Terminal 1)
+cd /Users/harrisonzhao/Documents/KCL\ bot/backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Frontend setup (Terminal 2)
+cd /Users/harrisonzhao/Documents/KCL\ bot/frontend
+npm install
+
+Then try the commands above again.
+
+═══════════════════════════════════════════════════════
+
+Full guide: LOCAL_TEST.md
