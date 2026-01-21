@@ -128,6 +128,8 @@ System: Checks timetable → Finds next event → May search for building locati
 | FR-26 | Iterative Execution | Execute tools in a loop until task is complete |
 | FR-27 | Context Assembly | Combine tool outputs for response generation |
 | FR-28 | Fallback Responses | Handle missing timetable URL gracefully |
+| FR-29 | Planning Step | Optional high-level strategy creation before reasoning (configurable) |
+| FR-30 | Configurable Iterations | Max reasoning iterations configurable via environment variable |
 
 ---
 
@@ -204,20 +206,38 @@ System: Checks timetable → Finds next event → May search for building locati
 ### 6.3 Agent Workflow Pipeline (ReAct Architecture)
 
 ```
-START → agent_node ←→ tool_node → END
-         ↓
-    [Reasoning Loop]
-         ↓
-    Select Tool → Execute → Observe → Repeat until done
+                     ENABLE_PLANNING=true
+                            │
+                            ▼
+                    ┌───────────────┐
+START ──────────────► planning_node │  ← Analyze query, produce strategy
+                    └───────┬───────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │ reasoning_node│ ←─────────────────────────┐
+                    └───────┬───────┘                           │
+                            │                                   │
+            ┌───────────────┴───────────────┐                   │
+            ▼                               ▼                   │
+    action = tool                   action = final_answer       │
+            │                               │                   │
+            ▼                               ▼                   │
+    tool_execution_node                    END                  │
+            │                                                   │
+            ▼                                                   │
+    observation_node ───────────────────────────────────────────┘
 ```
 
-The agent uses a **ReAct (Reasoning + Acting)** architecture:
+The agent uses a **ReAct (Reasoning + Acting)** architecture with optional planning:
 
 | Node | Function | Description |
 |------|----------|-------------|
-| Agent | Reasoning & Tool Selection | LLM decides which tool to call next |
-| Tool | Execution | Execute selected tool (search, scrape, timetable, Instagram, TikTok) |
-| Response | Final Answer | Generate response when all tools complete |
+| Planning | Strategy Creation | (Optional) Analyze query and create high-level approach |
+| Reasoning | Tool Selection | LLM decides which tool to call next, references strategy if available |
+| Tool Execution | Execute Tool | Execute selected tool (search, scrape, timetable, Instagram, TikTok) |
+| Observation | Process Result | Format tool output for next reasoning step |
+| Response | Final Answer | Generate response when reasoning decides to stop |
 
 **Available Tools:**
 - `web_search` - Search for KCL-related information via SerpAPI
@@ -360,6 +380,10 @@ LOG_LEVEL=INFO
 SESSION_MAX_AGE_HOURS=24
 PORT=8000
 REACT_APP_API_URL=http://localhost:8000/api
+
+# Agent Configuration
+MAX_AGENT_ITERATIONS=5      # Max reasoning loops (default: 5)
+ENABLE_PLANNING=false       # Enable planning step (default: false)
 ```
 
 ### 10.2 Supported LLM Models
@@ -416,6 +440,8 @@ REACT_APP_API_URL=http://localhost:8000/api
 - ✅ **Instagram Scraping** - Extract posts, profiles, and hashtags via Apify
 - ✅ **TikTok Scraping** - Extract videos, profiles, and hashtags via Apify
 - ✅ **ReAct Agent Architecture** - Reasoning + Acting loop for dynamic tool selection
+- ✅ **Planning Step** - Optional high-level strategy creation before reasoning (ENABLE_PLANNING)
+- ✅ **Configurable Iterations** - Max reasoning loops configurable via MAX_AGENT_ITERATIONS
 
 ### Known Limitations
 - In-memory session storage (sessions lost on server restart)

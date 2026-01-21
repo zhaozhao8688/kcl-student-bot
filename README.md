@@ -21,6 +21,8 @@ An AI-powered chat assistant for King's College London students that provides in
 - ⚡ **Real-Time Streaming**: Server-Sent Events (SSE) for live agent responses
 - 🧠 **ReAct Agent Architecture**: Intelligent tool selection with reasoning loop
 - 📊 **Agent Logs UI**: Real-time visibility into tool execution and agent thinking
+- 🎯 **Planning Step**: Optional high-level strategy creation before reasoning (ENABLE_PLANNING)
+- ⚙️ **Configurable Iterations**: Control max reasoning loops via MAX_AGENT_ITERATIONS
 
 ## 🚀 Quick Start Navigation
 
@@ -51,6 +53,7 @@ Choose your path:
 ┌──────────▼──────────┐
 │  ReAct Agent        │
 │  - LangGraph        │
+│  - Planning Step    │  ← Optional (ENABLE_PLANNING)
 │  - Reasoning Loop   │
 │  - Dynamic Tools    │
 └─────────────────────┘
@@ -181,6 +184,10 @@ SUPABASE_KEY=your_key
 SERPAPI_API_KEY=your_key
 FIRECRAWL_API_KEY=your_key
 APIFY_API_TOKEN=your_token  # For Instagram & TikTok scraping
+
+# Agent Configuration (Optional)
+MAX_AGENT_ITERATIONS=5    # Max reasoning loops (default: 5)
+ENABLE_PLANNING=false     # Enable planning step (default: false)
 ```
 
 See [MODEL_CONFIGURATION.md](MODEL_CONFIGURATION.md) for available models.
