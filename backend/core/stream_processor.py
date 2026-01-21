@@ -37,25 +37,37 @@ async def stream_chat(
         yield _sse_event("status", {"message": "Starting agent..."})
 
         # Create a fresh graph for this request (to avoid state issues)
-        logger.info(f"Creating ReAct graph for query: {query[:50]}...")
+        logger.info(f"Creating ReAct graph for query: {query[:50] if query else 'empty'}...")
         try:
             graph = create_react_agent_graph()
             logger.info("Graph created successfully")
         except Exception as graph_err:
+            import traceback
             logger.error(f"Failed to create graph: {graph_err}")
+            logger.error(traceback.format_exc())
             yield _sse_event("error", {"message": f"Failed to initialize agent: {str(graph_err)}"})
+            yield _sse_event("response", {"content": f"Sorry, I encountered an error starting up: {str(graph_err)}"})
             yield _sse_event("done", {"message": "Stream complete with error"})
             return
 
         # Prepare initial state
-        initial_state = create_initial_state(
-            query=query,
-            user_id=session_id,
-            ical_url=ical_url,
-            max_iterations=5,
-            conversation_history=conversation_history
-        )
-        logger.info(f"Initial state created with keys: {list(initial_state.keys())}")
+        try:
+            initial_state = create_initial_state(
+                query=query,
+                user_id=session_id,
+                ical_url=ical_url,
+                max_iterations=5,
+                conversation_history=conversation_history
+            )
+            logger.info(f"Initial state created with keys: {list(initial_state.keys())}")
+        except Exception as state_err:
+            import traceback
+            logger.error(f"Failed to create initial state: {state_err}")
+            logger.error(traceback.format_exc())
+            yield _sse_event("error", {"message": f"Failed to initialize state: {str(state_err)}"})
+            yield _sse_event("response", {"content": f"Sorry, I encountered an error: {str(state_err)}"})
+            yield _sse_event("done", {"message": "Stream complete with error"})
+            return
 
         yield _sse_event("log", {"content": f"Processing query: {query}"})
 
