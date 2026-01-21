@@ -62,20 +62,25 @@ You should generate new API keys and update them:
 3. Click "Change visibility" → "Make private"
 4. Confirm
 
-### Option B: Use Environment Variables in Render UI
-1. Remove API keys from `render.yaml`
-2. Add them manually in Render dashboard
-3. This keeps keys secret even with public repo
+### Option B: Use Environment Variables in Render UI ✅ **IMPLEMENTED**
+1. ✅ API keys removed from `render.yaml`
+2. ⚠️ You must add them manually in Render dashboard:
+   - Go to your service → Environment tab
+   - Add each key from the list in render.yaml
+   - Click "Save Changes"
+3. ✅ This keeps keys secret even with public repo
 
-To use Option B, I can update render.yaml to remove the values. Let me know!
+**Required Action**: After pushing these changes, configure the environment variables in Render dashboard before the backend will work.
 
 ---
 
-## ✅ Current Status
+## ✅ Current Status (Updated)
 
-- ✅ Keys are in render.yaml for easy deployment
-- ⚠️ Check if your repo is public or private
-- ⚠️ If public, consider making it private or rotating keys
+- ✅ **FIXED**: API keys have been removed from render.yaml
+- ✅ Keys are now configured via Render dashboard (secure method)
+- ⚠️ **IMPORTANT**: Keys were exposed in git commit `099882d`
+- ⚠️ If your repo was EVER public, you MUST rotate all API keys
+- ⚠️ Even if repo is now private, old commits still contain the keys
 
 ---
 

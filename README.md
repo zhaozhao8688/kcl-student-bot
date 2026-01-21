@@ -12,6 +12,15 @@ An AI-powered chat assistant for King's College London students that provides in
 - 🗑️ **Clear Chat**: Easy reset of conversation history
 - 🔓 **No Login Required**: Simple timetable URL paste for schedule access
 
+## 🚀 Quick Start Navigation
+
+Choose your path:
+
+1. **Local Development** → [GETTING_STARTED.md](./GETTING_STARTED.md) - Set up and run on your machine
+2. **Quick Deploy (15 min)** → [QUICK_START_RENDER.md](./QUICK_START_RENDER.md) - Fast deployment to Render
+3. **Detailed Deployment** → [RENDER_DEPLOY.md](./RENDER_DEPLOY.md) - Step-by-step deployment guide with screenshots
+4. **Troubleshooting URLs** → [WHICH_URL.md](./WHICH_URL.md) - Understanding frontend vs backend URLs
+
 ## 🏗️ Architecture
 
 ```
