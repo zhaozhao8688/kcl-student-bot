@@ -93,7 +93,17 @@ def reasoning_node(state: ReActState) -> Dict[str, Any]:
         # Extract final response if this is the end
         final_response = None
         if should_stop:
-            final_response = action_input.get("response", str(action_input))
+            # Handle case where action_input might be a string or dict
+            if isinstance(action_input, dict):
+                final_response = action_input.get("response", str(action_input))
+            else:
+                # If action_input is a string or other type, use it directly
+                final_response = str(action_input) if action_input else None
+
+            if not final_response:
+                logger.warning("final_answer action but no response content found")
+                final_response = "I apologize, but I couldn't formulate a proper response. Please try again."
+
             logger.info("ReAct loop complete - final answer generated")
 
         # Build reasoning trace entry

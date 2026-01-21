@@ -93,11 +93,11 @@ async def process_chat(
         # Run through ReAct agent graph
         result = react_agent_graph.invoke(initial_state)
 
-        # Extract response
-        response = result.get(
-            "final_response",
-            "I couldn't generate a response. Please try again."
-        )
+        # Extract response (with fallback for empty/None)
+        response = result.get("final_response")
+        if not response:
+            logger.warning("No final_response from agent, using fallback")
+            response = "I couldn't generate a response. Please try again."
 
         # Log iteration count for monitoring
         iterations = result.get("current_iteration", 0)

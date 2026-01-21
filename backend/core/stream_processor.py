@@ -129,15 +129,21 @@ async def stream_chat(
                     "iteration": iterations
                 })
 
-        # Send final response
+        # Send final response (always send something, even if empty)
         if final_response:
             yield _sse_event("response", {"content": final_response})
+        else:
+            # Fallback response if agent didn't produce one
+            logger.warning("No final_response from agent, sending fallback")
+            fallback = "I apologize, but I wasn't able to generate a response. Please try asking your question again."
+            yield _sse_event("response", {"content": fallback})
+            final_response = fallback
 
-            # Save to database in background
-            try:
-                _save_messages(session_id, query, final_response)
-            except Exception as db_error:
-                logger.error(f"Error saving to database: {db_error}")
+        # Save to database
+        try:
+            _save_messages(session_id, query, final_response)
+        except Exception as db_error:
+            logger.error(f"Error saving to database: {db_error}")
 
         yield _sse_event("done", {"message": "Stream complete"})
 
