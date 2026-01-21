@@ -46,11 +46,9 @@ function App() {
       try {
         const res = await sessionAPI.create();
         setSessionId(res.session_id);
-        console.log('Session created:', res.session_id);
       } catch (error) {
         console.error('Error creating session on mount:', error);
         // Don't show error - session will be created on first message
-        console.log('Session will be created on first message');
       }
     };
 
@@ -63,11 +61,9 @@ function App() {
     let currentSessionId = sessionId;
     if (!currentSessionId) {
       try {
-        console.log('Creating session on first message...');
         const res = await sessionAPI.create();
         currentSessionId = res.session_id;
         setSessionId(currentSessionId);
-        console.log('Session created:', currentSessionId);
       } catch (error) {
         console.error('Failed to create session:', error);
         // Add error message
@@ -133,7 +129,6 @@ function App() {
       await timetableAPI.setUrl(sessionId, source);
       setIcalUrl(source);
       setHasTimetable(true);
-      console.log('Timetable synced:', source);
     } catch (error) {
       console.error('Error syncing timetable:', error);
       throw error;
@@ -153,7 +148,6 @@ function App() {
           timestamp: new Date().toISOString()
         }
       ]);
-      console.log('Chat cleared');
     }
   };
 
