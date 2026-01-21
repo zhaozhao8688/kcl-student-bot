@@ -16,6 +16,11 @@ services:
     envVars:
       - key: OPENROUTER_API_KEY
         # Set in Render dashboard - OpenRouter API key for LLM access
+      - key: DEFAULT_MODEL
+        value: anthropic/claude-3.5-sonnet
+        # AI model to use - can override in Render dashboard
+        # Options: anthropic/claude-opus-4.5, anthropic/claude-3.5-sonnet,
+        #          google/gemini-3-flash-preview, openai/gpt-5, etc.
       - key: SUPABASE_URL
         # Set in Render dashboard - Supabase project URL
       - key: SUPABASE_KEY

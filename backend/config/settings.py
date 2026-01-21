@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # OpenRouter Configuration
     openrouter_api_key: str
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    default_model: str = "google/gemini-3-flash-preview"
+    default_model: str = "anthropic/claude-3.5-sonnet"  # Can be overridden via DEFAULT_MODEL env var
 
     # Supabase Configuration
     supabase_url: str
