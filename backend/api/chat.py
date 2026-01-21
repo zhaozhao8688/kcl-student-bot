@@ -1,8 +1,10 @@
 """Chat API endpoints."""
 
 from fastapi import APIRouter, HTTPException
-from models.chat import ChatRequest, ChatResponse, ChatHistoryResponse, Message
+from fastapi.responses import StreamingResponse
+from models.chat import ChatRequest, ChatResponse, ChatHistoryResponse, Message, AgentDebugInfo
 from core.chat_processor import process_chat, get_chat_history
+from core.stream_processor import stream_chat
 from core.session import session_manager
 from utils.logger import setup_logger
 
@@ -18,9 +20,10 @@ async def send_message(request: ChatRequest):
 
     Args:
         request: Chat request containing query, session_id, and optional ical_url
+                 Set include_steps=true to get agent reasoning steps in response
 
     Returns:
-        ChatResponse with AI response and session_id
+        ChatResponse with AI response, session_id, and optionally debug info
     """
     try:
         # Create or validate session
@@ -47,25 +50,94 @@ async def send_message(request: ChatRequest):
             ical_url = session_manager.get_ical_url(session_id)
 
         # Process the chat message
-        response = await process_chat(
+        response, debug_info = await process_chat(
             query=request.query,
             session_id=session_id,
-            ical_url=ical_url
+            ical_url=ical_url,
+            include_steps=request.include_steps or False,
+            conversation_history=request.conversation_history
         )
 
         # Increment message count
         session_manager.increment_message_count(session_id)
 
-        return ChatResponse(
+        # Build response
+        chat_response = ChatResponse(
             response=response,
-            session_id=session_id
+            session_id=session_id,
+            debug=AgentDebugInfo(**debug_info) if debug_info else None
         )
+
+        return chat_response
 
     except Exception as e:
         logger.error(f"Error in send_message: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to process message: {str(e)}"
+        )
+
+
+@router.post("/stream")
+async def stream_message(request: ChatRequest):
+    """
+    Process a chat message and stream execution logs via SSE.
+
+    This endpoint streams real-time agent execution logs to the frontend,
+    allowing users to see the agent's reasoning process as it happens.
+
+    Args:
+        request: Chat request containing query, session_id, and optional ical_url
+
+    Returns:
+        StreamingResponse with SSE events containing logs and final response
+    """
+    try:
+        # Create or validate session
+        if not request.session_id:
+            session_id = session_manager.create_session()
+            logger.info(f"Created new session for stream: {session_id}")
+        else:
+            session_id = request.session_id
+            if not session_manager.session_exists(session_id):
+                session_manager._sessions[session_id] = session_manager._sessions.get(
+                    session_id,
+                    type('Session', (), {
+                        'session_id': session_id,
+                        'ical_url': None,
+                        'message_count': 0
+                    })()
+                )
+
+        # Get iCal URL from request or session
+        ical_url = request.ical_url
+        if not ical_url:
+            ical_url = session_manager.get_ical_url(session_id)
+
+        # Increment message count
+        session_manager.increment_message_count(session_id)
+
+        # Return streaming response
+        return StreamingResponse(
+            stream_chat(
+                query=request.query,
+                session_id=session_id,
+                ical_url=ical_url,
+                conversation_history=request.conversation_history
+            ),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Session-Id": session_id
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error in stream_message: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to start stream: {str(e)}"
         )
 
 

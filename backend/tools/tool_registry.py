@@ -7,6 +7,8 @@ from tools.base import BaseTool
 from tools.search_tool import SearchTool
 from tools.scraper_tool import ScraperTool
 from tools.timetable_tool import TimetableTool
+from tools.tiktok_tool import TikTokTool
+from tools.instagram_tool import InstagramTool
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -25,7 +27,9 @@ class ToolRegistry:
         tools = [
             SearchTool(),
             ScraperTool(),
-            TimetableTool()
+            TimetableTool(),
+            TikTokTool(),
+            InstagramTool()
         ]
 
         for tool in tools:

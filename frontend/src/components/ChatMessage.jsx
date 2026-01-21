@@ -35,17 +35,15 @@ export function ChatMessage({ msg }) {
                 ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1">{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1">{children}</ol>,
                 li: ({ children }) => <li className="ml-2">{children}</li>,
-                // Code
-                code: ({ inline, children }) =>
-                  inline ? (
-                    <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-sm font-mono">
-                      {children}
-                    </code>
-                  ) : (
-                    <code className="block bg-slate-100 text-slate-800 p-3 rounded-lg my-2 text-sm font-mono overflow-x-auto">
-                      {children}
-                    </code>
-                  ),
+                // Code blocks - v9 uses inline prop to distinguish
+                code: ({ inline, children }) => (
+                  <code className={inline
+                    ? "bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-sm font-mono"
+                    : "block bg-slate-100 text-slate-800 p-3 rounded-lg text-sm font-mono overflow-x-auto"
+                  }>
+                    {children}
+                  </code>
+                ),
                 pre: ({ children }) => <pre className="my-2">{children}</pre>,
                 // Links
                 a: ({ href, children }) => (

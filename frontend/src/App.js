@@ -7,6 +7,7 @@ import { Header } from './components/Header';
 import { ChatMessage } from './components/ChatMessage';
 import { ChatInput } from './components/ChatInput';
 import { TimetableModal } from './components/TimetableModal';
+import { AgentLogs } from './components/AgentLogs';
 import { chatAPI, timetableAPI, sessionAPI } from './services/api';
 import './App.css';
 
@@ -17,6 +18,8 @@ function App() {
   const [hasTimetable, setHasTimetable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isTimetableOpen, setIsTimetableOpen] = useState(false);
+  const [agentLogs, setAgentLogs] = useState([]);
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when new messages arrive
@@ -55,7 +58,7 @@ function App() {
     initSession();
   }, []);
 
-  // Handle sending a message
+  // Handle sending a message with streaming logs
   const handleSendMessage = async (query) => {
     // Create session if not exists
     let currentSessionId = sessionId;
@@ -66,7 +69,6 @@ function App() {
         setSessionId(currentSessionId);
       } catch (error) {
         console.error('Failed to create session:', error);
-        // Add error message
         const errorMsg = {
           id: `error-${Date.now()}`,
           role: 'ai',
@@ -88,34 +90,54 @@ function App() {
     };
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
+    setIsStreaming(true);
+    setAgentLogs([]); // Clear previous logs
 
-    try {
-      // Call API
-      const res = await chatAPI.sendMessage(query, currentSessionId, icalUrl || null);
+    // Extract conversation history (exclude welcome message)
+    const conversationHistory = messages
+      .filter(msg => msg.id !== '1')  // Exclude welcome message
+      .map(msg => ({
+        role: msg.role === 'ai' ? 'assistant' : msg.role,
+        content: msg.content
+      }));
 
-      // Add AI response to UI
-      const aiMsg = {
-        id: `ai-${Date.now()}`,
-        role: 'ai',
-        content: res.response,
-        timestamp: new Date().toISOString()
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    } catch (error) {
-      console.error('Chat error:', error);
-
-      // Add error message
-      const errorMsg = {
-        id: `error-${Date.now()}`,
-        role: 'ai',
-        content:
-          "I'm sorry, I encountered an error processing your message. Please try again.",
-        timestamp: new Date().toISOString()
-      };
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      setIsLoading(false);
-    }
+    // Use streaming API
+    chatAPI.streamMessage(query, currentSessionId, icalUrl || null, conversationHistory, {
+      onLog: (logData) => {
+        setAgentLogs((prev) => [...prev, logData]);
+      },
+      onResponse: (response) => {
+        // Add AI response to UI
+        const aiMsg = {
+          id: `ai-${Date.now()}`,
+          role: 'ai',
+          content: response,
+          timestamp: new Date().toISOString()
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      },
+      onError: (errorMessage) => {
+        console.error('Stream error:', errorMessage);
+        const errorMsg = {
+          id: `error-${Date.now()}`,
+          role: 'ai',
+          content:
+            "I'm sorry, I encountered an error processing your message. Please try again.",
+          timestamp: new Date().toISOString()
+        };
+        setMessages((prev) => [...prev, errorMsg]);
+        setIsLoading(false);
+        setIsStreaming(false);
+      },
+      onDone: () => {
+        setIsLoading(false);
+        setIsStreaming(false);
+        // Keep logs visible for a moment, then clear
+        setTimeout(() => {
+          setAgentLogs([]);
+        }, 3000);
+      }
+    });
   };
 
   // Handle timetable sync
@@ -174,8 +196,15 @@ function App() {
             <ChatMessage key={msg.id} msg={msg} />
           ))}
 
-          {/* Loading indicator */}
-          {isLoading && (
+          {/* Agent Logs - shown while streaming */}
+          {(isStreaming || agentLogs.length > 0) && (
+            <div className="flex w-full mb-6 justify-start">
+              <AgentLogs logs={agentLogs} isStreaming={isStreaming} />
+            </div>
+          )}
+
+          {/* Loading indicator - only show if loading but no logs yet */}
+          {isLoading && agentLogs.length === 0 && (
             <div className="flex w-full mb-6 justify-start">
               <div className="flex flex-col max-w-[85%] sm:max-w-[75%] items-start">
                 <div className="px-5 py-3.5 bg-white text-slate-700 border border-slate-100 rounded-2xl rounded-tl-none shadow-sm">

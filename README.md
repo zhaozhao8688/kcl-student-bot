@@ -15,6 +15,13 @@ An AI-powered chat assistant for King's College London students that provides in
 - 🔓 **No Login Required**: Simple timetable URL paste for schedule access
 - 🔧 **Auto-retry on Errors**: Automatic API key verification and error handling
 
+### New in v2.1
+- 📸 **Instagram Scraping**: Scrape Instagram posts, profiles, and hashtags via Apify
+- 🎵 **TikTok Scraping**: Scrape TikTok videos, profiles, and hashtags via Apify
+- ⚡ **Real-Time Streaming**: Server-Sent Events (SSE) for live agent responses
+- 🧠 **ReAct Agent Architecture**: Intelligent tool selection with reasoning loop
+- 📊 **Agent Logs UI**: Real-time visibility into tool execution and agent thinking
+
 ## 🚀 Quick Start Navigation
 
 Choose your path:
@@ -31,29 +38,31 @@ Choose your path:
 ┌─────────────────────┐
 │   React Frontend    │  Port 3000
 │  - Tailwind CSS     │
-│  - Axios API client │
+│  - SSE Streaming    │
+│  - AgentLogs UI     │
 └──────────┬──────────┘
-           │ REST API
+           │ REST API + SSE
 ┌──────────▼──────────┐
 │   FastAPI Backend   │  Port 8000
 │  - Session mgmt     │
-│  - API endpoints    │
+│  - Stream processor │
 └──────────┬──────────┘
            │
 ┌──────────▼──────────┐
-│  Agent System       │
+│  ReAct Agent        │
 │  - LangGraph        │
-│  - Tools & Services │
+│  - Reasoning Loop   │
+│  - Dynamic Tools    │
 └─────────────────────┘
 ```
 
 **Tech Stack:**
 - **Frontend**: React 18, Tailwind CSS, Axios, React Markdown, Lucide Icons
 - **Backend**: FastAPI, Python 3.11+
-- **Agent System**: LangGraph (workflow orchestration)
+- **Agent System**: LangGraph (ReAct workflow orchestration)
 - **LLM**: OpenRouter (Claude 3.5 Sonnet, configurable)
 - **Database**: Supabase
-- **Tools**: SerpAPI (search), Firecrawl (scraping), iCalendar (timetable)
+- **Tools**: SerpAPI (search), Firecrawl (scraping), iCalendar (timetable), Apify (Instagram, TikTok)
 
 ## 📁 Project Structure
 
@@ -63,35 +72,47 @@ kcl-student-bot/
 │   ├── main.py                # API entry point
 │   ├── requirements.txt       # Python dependencies
 │   ├── api/                   # API routes
-│   │   ├── chat.py           # Chat endpoints
+│   │   ├── chat.py           # Chat endpoints (with streaming)
 │   │   ├── timetable.py      # Timetable endpoints
 │   │   └── session.py        # Session endpoints
 │   ├── core/                  # Core business logic
 │   │   ├── session.py        # Session management
-│   │   └── chat_processor.py # Chat processing
+│   │   ├── chat_processor.py # Chat processing
+│   │   └── stream_processor.py # SSE streaming
 │   ├── models/                # Pydantic models
-│   ├── agents/                # LangGraph agent system
-│   ├── tools/                 # Search, scraping, timetable tools
+│   ├── agents/                # ReAct Agent System
+│   │   ├── react_graph.py    # ReAct agent graph
+│   │   ├── react_nodes.py    # ReAct node implementations
+│   │   ├── react_state.py    # ReAct state definition
+│   │   └── prompts.py        # Agent prompts
+│   ├── tools/                 # Agent tools
+│   │   ├── search_tool.py    # SerpAPI web search
+│   │   ├── scraper_tool.py   # Firecrawl web scraping
+│   │   ├── timetable_tool.py # iCal parsing
+│   │   ├── instagram_tool.py # Instagram scraping
+│   │   ├── tiktok_tool.py    # TikTok scraping
+│   │   └── tool_definitions.py # LLM tool schemas
 │   ├── services/              # LLM & database services
 │   └── config/                # Configuration
 │
 ├── frontend/                   # React frontend
 │   ├── package.json
 │   ├── src/
-│   │   ├── App.js            # Main component
+│   │   ├── App.js            # Main component (with streaming)
 │   │   ├── components/       # UI components
 │   │   │   ├── Header.jsx
 │   │   │   ├── ChatMessage.jsx
 │   │   │   ├── ChatInput.jsx
-│   │   │   └── TimetableModal.jsx
+│   │   │   ├── TimetableModal.jsx
+│   │   │   └── AgentLogs.jsx # Real-time agent logs
 │   │   └── services/
-│   │       └── api.js        # API client
+│   │       └── api.js        # API client (with SSE)
 │   └── tailwind.config.js
 │
 ├── README.md                   # This file
-├── GETTING_STARTED.md         # Quick start guide
-├── MIGRATION_README.md        # Architecture details
-└── STATUS.md                  # Current system status
+├── PRD.md                     # Product requirements document
+├── REPOSITORY_STATE.md        # Repository documentation
+└── render.yaml                # Render deployment config
 ```
 
 ## 🚀 Quick Start
@@ -159,6 +180,7 @@ SUPABASE_KEY=your_key
 # Tools
 SERPAPI_API_KEY=your_key
 FIRECRAWL_API_KEY=your_key
+APIFY_API_TOKEN=your_token  # For Instagram & TikTok scraping
 ```
 
 See [MODEL_CONFIGURATION.md](MODEL_CONFIGURATION.md) for available models.

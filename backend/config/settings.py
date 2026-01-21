@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Firecrawl Configuration
     firecrawl_api_key: str
 
+    # Apify Configuration
+    apify_api_key: str
+
     # Application Configuration
     app_env: str = "development"
     log_level: str = "INFO"

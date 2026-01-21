@@ -32,6 +32,96 @@ export const chatAPI = {
   },
 
   /**
+   * Send a message with streaming logs via SSE
+   * @param {string} query - User's message
+   * @param {string} sessionId - Session identifier
+   * @param {string} icalUrl - Optional iCal URL for timetable
+   * @param {Array} conversationHistory - Previous messages for context
+   * @param {function} onLog - Callback for log events
+   * @param {function} onResponse - Callback for final response
+   * @param {function} onError - Callback for errors
+   * @param {function} onDone - Callback when stream completes
+   * @returns {function} Cleanup function to abort the stream
+   */
+  streamMessage: (query, sessionId, icalUrl, conversationHistory, { onLog, onResponse, onError, onDone }) => {
+    const abortController = new AbortController();
+
+    const fetchStream = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/chat/stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query,
+            session_id: sessionId,
+            ical_url: icalUrl,
+            conversation_history: conversationHistory
+          }),
+          signal: abortController.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete SSE events (separated by \n\n)
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || ''; // Keep incomplete event in buffer
+
+          for (const event of events) {
+            if (event.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(event.slice(6));
+
+                if (data.type === 'log') {
+                  onLog?.(data);
+                } else if (data.type === 'response') {
+                  onResponse?.(data.content);
+                } else if (data.type === 'error') {
+                  onError?.(data.message);
+                } else if (data.type === 'done') {
+                  onDone?.();
+                } else if (data.type === 'status') {
+                  onLog?.(data);
+                }
+              } catch (e) {
+                console.error('Error parsing SSE event:', e);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Stream error:', error);
+          onError?.(error.message);
+        }
+      }
+    };
+
+    fetchStream();
+
+    // Return cleanup function
+    return () => {
+      abortController.abort();
+    };
+  },
+
+  /**
    * Get chat history for a session
    * @param {string} sessionId - Session identifier
    * @returns {Promise} Array of messages

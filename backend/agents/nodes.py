@@ -6,8 +6,9 @@ from typing import Dict, Any
 from agents.state import AgentState
 from tools.tool_registry import tool_registry
 from services.llm_service import llm_service
-from utils.formatters import format_search_results, format_timetable_events
+from utils.formatters import format_search_results, format_timetable_events, format_tiktok_results
 from utils.logger import setup_logger
+import re
 
 logger = setup_logger(__name__)
 
@@ -25,6 +26,7 @@ def router_node(state: AgentState) -> Dict[str, Any]:
     logger.info(f"Router analyzing query: {state['query']}")
 
     query = state["query"].lower()
+    original_query = state["query"]
 
     # Determine query type and required tools - expand timetable keywords
     timetable_keywords = [
@@ -34,21 +36,54 @@ def router_node(state: AgentState) -> Dict[str, Any]:
         "professor", "teacher", "instructor", "module", "course"
     ]
 
+    # TikTok keywords for detection
+    tiktok_keywords = [
+        "tiktok", "fyp", "for you page",
+        "viral", "trending", "influencer", "creator", "social media",
+        "video", "clips", "content"
+    ]
+
     needs_timetable = any(keyword in query for keyword in timetable_keywords)
 
-    # Only search if it's not a pure timetable query
-    needs_search = not needs_timetable
+    # Check for TikTok triggers: keywords or #hashtag/@username patterns
+    hashtag_pattern = re.compile(r'#(\w+)')
+    profile_pattern = re.compile(r'@(\w+)')
+
+    hashtags_found = hashtag_pattern.findall(original_query)
+    profiles_found = profile_pattern.findall(original_query)
+
+    needs_tiktok = (
+        any(keyword in query for keyword in tiktok_keywords) or
+        bool(hashtags_found) or
+        bool(profiles_found)
+    )
+
+    # Extract TikTok query parameters
+    tiktok_hashtags = hashtags_found if hashtags_found else None
+    tiktok_profiles = profiles_found if profiles_found else None
+
+    # Build search query from remaining text (remove hashtags and mentions)
+    remaining_query = re.sub(r'[#@]\w+', '', original_query).strip()
+    tiktok_queries = [remaining_query] if remaining_query and needs_tiktok else None
+
+    # Only search if it's not a pure timetable query and not a TikTok query
+    needs_search = not needs_timetable and not needs_tiktok
 
     needs_scraping = needs_search  # Scrape top result if we search
 
     return {
-        "query_type": "timetable" if needs_timetable else "general",
+        "query_type": "tiktok" if needs_tiktok else ("timetable" if needs_timetable else "general"),
         "needs_search": needs_search,
         "needs_scraping": needs_scraping and needs_search,
         "needs_timetable": needs_timetable,
+        "needs_tiktok": needs_tiktok,
         "search_results": None,
         "scraped_content": None,
-        "timetable_events": None
+        "timetable_events": None,
+        "tiktok_results": None,
+        "tiktok_hashtags": tiktok_hashtags,
+        "tiktok_profiles": tiktok_profiles,
+        "tiktok_queries": tiktok_queries
     }
 
 
@@ -143,6 +178,38 @@ def timetable_node(state: AgentState) -> Dict[str, Any]:
     return {"timetable_events": events}
 
 
+def tiktok_node(state: AgentState) -> Dict[str, Any]:
+    """
+    Fetch TikTok videos if needed.
+
+    Args:
+        state: Current agent state
+
+    Returns:
+        Updated state with TikTok results
+    """
+    if not state.get("needs_tiktok", False):
+        logger.info("Skipping TikTok - not needed")
+        return {"tiktok_results": None}
+
+    logger.info("Executing TikTok search")
+    tiktok_tool = tool_registry.get_tool("tiktok")
+
+    results = tiktok_tool.execute(
+        hashtags=state.get("tiktok_hashtags"),
+        profiles=state.get("tiktok_profiles"),
+        search_queries=state.get("tiktok_queries"),
+        results_per_page=10
+    )
+
+    if not results:
+        logger.warning("No TikTok results returned")
+        return {"tiktok_results": None}
+
+    logger.info(f"Successfully retrieved {len(results)} TikTok videos")
+    return {"tiktok_results": results}
+
+
 def response_node(state: AgentState) -> Dict[str, Any]:
     """
     Generate final response using LLM.
@@ -174,11 +241,14 @@ def response_node(state: AgentState) -> Dict[str, Any]:
     if state.get("timetable_events"):
         context_parts.append("Timetable:\n" + format_timetable_events(state["timetable_events"]))
 
+    if state.get("tiktok_results"):
+        context_parts.append("TikTok Videos:\n" + format_tiktok_results(state["tiktok_results"]))
+
     context = "\n\n".join(context_parts) if context_parts else "No additional context available."
 
     # Build messages for LLM
     system_message = """You are a helpful AI assistant for King's College London (KCL) students.
-Your role is to provide accurate, helpful information about KCL using the context provided.
+Your role is to provide helpful information about KCL using the tools and context provided.
 
 Guidelines:
 - Be friendly and supportive

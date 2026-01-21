@@ -1,22 +1,67 @@
-"""Chat processing logic using the agent graph.
+"""Chat processing logic using the ReAct agent graph.
 
-Handles chat message processing through the LangGraph agent workflow.
+Handles chat message processing through the LangGraph ReAct workflow.
 """
 
-from typing import Optional
-from agents.graph import agent_graph
-from agents.state import AgentState
+from typing import Optional, Dict, Any, Tuple
+from agents.react_graph import react_agent_graph
+from agents.react_state import create_initial_state
 from services.supabase_service import supabase_service
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
 
+def _extract_debug_info(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract debug information from the agent result."""
+    iterations = result.get("current_iteration", 0)
+    tool_calls = result.get("tool_calls", [])
+    reasoning_trace = result.get("reasoning_trace", [])
+
+    # Get list of tools used
+    tools_used = list(set(tc.get("tool_name", "") for tc in tool_calls if tc.get("tool_name")))
+
+    # Build step details
+    steps = []
+    for i, trace in enumerate(reasoning_trace):
+        step = {
+            "iteration": trace.get("iteration", i + 1),
+            "thought": trace.get("thought"),
+            "action": trace.get("action"),
+            "action_input": trace.get("action_input"),
+            "timestamp": trace.get("timestamp")
+        }
+
+        # Add observation from corresponding tool call if available
+        if i < len(tool_calls):
+            tc = tool_calls[i]
+            if tc.get("error"):
+                step["observation"] = f"Error: {tc.get('error')}"
+            else:
+                # Truncate long observations for readability
+                obs = tc.get("result", "")
+                if obs and len(str(obs)) > 500:
+                    step["observation"] = str(obs)[:500] + "... (truncated)"
+                else:
+                    step["observation"] = obs
+
+        steps.append(step)
+
+    return {
+        "total_iterations": iterations,
+        "tool_calls_count": len(tool_calls),
+        "tools_used": tools_used,
+        "steps": steps
+    }
+
+
 async def process_chat(
     query: str,
     session_id: str,
-    ical_url: Optional[str] = None
-) -> str:
+    ical_url: Optional[str] = None,
+    include_steps: bool = False,
+    conversation_history: Optional[list] = None
+) -> Tuple[str, Optional[Dict[str, Any]]]:
     """
     Process a chat message through the agent graph.
 
@@ -24,9 +69,11 @@ async def process_chat(
         query: User's query message
         session_id: Session identifier
         ical_url: Optional iCal URL for timetable queries
+        include_steps: Whether to include debug/step information
+        conversation_history: Optional list of previous messages in the conversation
 
     Returns:
-        str: AI assistant's response
+        Tuple of (response string, debug info dict or None)
 
     Raises:
         Exception: If processing fails
@@ -34,25 +81,17 @@ async def process_chat(
     try:
         logger.info(f"Processing query for session {session_id}: {query}")
 
-        # Prepare initial state
-        initial_state: AgentState = {
-            "messages": [],
-            "user_id": session_id,  # Use session_id as user_id
-            "is_authenticated": False,
-            "query": query,
-            "query_type": "",
-            "needs_search": False,
-            "needs_scraping": False,
-            "needs_timetable": False,
-            "search_results": None,
-            "scraped_content": None,
-            "timetable_events": None,
-            "final_response": None,
-            "ical_url": ical_url
-        }
+        # Prepare initial state for ReAct agent
+        initial_state = create_initial_state(
+            query=query,
+            user_id=session_id,
+            ical_url=ical_url,
+            max_iterations=5,
+            conversation_history=conversation_history
+        )
 
-        # Run through agent graph
-        result = agent_graph.invoke(initial_state)
+        # Run through ReAct agent graph
+        result = react_agent_graph.invoke(initial_state)
 
         # Extract response
         response = result.get(
@@ -60,7 +99,20 @@ async def process_chat(
             "I couldn't generate a response. Please try again."
         )
 
+        # Log iteration count for monitoring
+        iterations = result.get("current_iteration", 0)
+        tool_calls = result.get("tool_calls", [])
+        reasoning_trace = result.get("reasoning_trace", [])
+
+        # Log detailed steps
+        logger.info(f"ReAct completed in {iterations} iterations with {len(tool_calls)} tool calls")
+        for i, trace in enumerate(reasoning_trace):
+            logger.info(f"  Step {trace.get('iteration', i+1)}: {trace.get('action', 'unknown')} - {trace.get('thought', '')[:100]}...")
+
         logger.info(f"Successfully generated response for session {session_id}")
+
+        # Extract debug info if requested
+        debug_info = _extract_debug_info(result) if include_steps else None
 
         # Save messages to database
         try:
@@ -69,7 +121,7 @@ async def process_chat(
             logger.error(f"Error saving to database: {str(db_error)}")
             # Don't fail the request if DB save fails
 
-        return response
+        return response, debug_info
 
     except Exception as e:
         logger.error(f"Error processing chat: {str(e)}", exc_info=True)
@@ -126,7 +178,7 @@ async def get_chat_history(session_id: str, limit: int = 50) -> list:
     """
     try:
         messages = supabase_service.get_chat_history(
-            user_id=session_id,
+            session_id=session_id,
             limit=limit
         )
         return messages
