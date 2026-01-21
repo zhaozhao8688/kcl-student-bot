@@ -81,8 +81,8 @@ def reasoning_node(state: ReActState) -> Dict[str, Any]:
         logger.info(f"LLM response length: {len(response) if response else 0}")
         logger.debug(f"LLM response: {response}")
 
-        if not response:
-            logger.error("LLM returned empty response")
+        if not response or not response.strip():
+            logger.error("LLM returned empty or whitespace-only response")
             return {
                 "current_iteration": iteration,
                 "should_stop": True,
@@ -90,6 +90,7 @@ def reasoning_node(state: ReActState) -> Dict[str, Any]:
             }
 
         # Parse JSON response
+        logger.info(f"LLM response preview: {response[:200] if len(response) > 200 else response}")
         parsed = _parse_react_response(response)
         logger.info(f"Parsed response - action: {parsed.get('action')}, has_thought: {bool(parsed.get('thought'))}")
 
